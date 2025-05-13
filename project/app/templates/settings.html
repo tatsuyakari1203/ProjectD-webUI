@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">System Settings</h5>
+                </div>
+                <div class="card-body">
+                    <p>Configure application settings and system parameters.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- API Configuration -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">API Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="apiConfigForm">
+                        <div class="mb-3">
+                            <label for="apiKey" class="form-label">API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="apiKey" value="8a679613-019f-4b88-9068-da10f09dcdd2" readonly>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleApiKey">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-primary" type="button" id="generateApiKey">
+                                    <i class="fas fa-sync-alt"></i> Generate
+                                </button>
+                            </div>
+                            <small class="text-muted">Used for authenticating with the ESP32 device.</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="mqttBroker" class="form-label">MQTT Broker</label>
+                            <input type="text" class="form-control" id="mqttBroker" value="iot.karis.cloud">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="mqttPort" class="form-label">MQTT Port</label>
+                            <input type="number" class="form-control" id="mqttPort" value="1883">
+                        </div>
+                        
+                        <button type="button" class="btn btn-primary" id="saveApiConfig">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notification Settings -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Notification Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="enableNotifications" checked>
+                        <label class="form-check-label" for="enableNotifications">Enable Notifications</label>
+                    </div>
+                    
+                    <div id="notificationOptions">
+                        <div class="mb-3">
+                            <label class="form-label">Notification Events</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifyScheduleStart" checked>
+                                <label class="form-check-label" for="notifyScheduleStart">
+                                    Schedule Start
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifyScheduleEnd" checked>
+                                <label class="form-check-label" for="notifyScheduleEnd">
+                                    Schedule End
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifyErrors" checked>
+                                <label class="form-check-label" for="notifyErrors">
+                                    System Errors
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifySensorAlerts">
+                                <label class="form-check-label" for="notifySensorAlerts">
+                                    Sensor Alerts
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="notificationEmail" class="form-label">Email for Notifications</label>
+                            <input type="email" class="form-control" id="notificationEmail" placeholder="your@email.com">
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" id="saveNotificationSettings">Save Settings</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Management -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Data Management</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="dataRetention" class="form-label">Data Retention Period</label>
+                        <select class="form-select" id="dataRetention">
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="30" selected>30 days</option>
+                            <option value="90">90 days</option>
+                            <option value="180">180 days</option>
+                            <option value="365">1 year</option>
+                        </select>
+                        <small class="text-muted">Sensor data older than this will be automatically deleted.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="sensorUpdateInterval" class="form-label">Sensor Data Update Interval</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="sensorUpdateInterval" value="5" min="1" max="60">
+                            <span class="input-group-text">seconds</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="statusUpdateInterval" class="form-label">Status Update Interval</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="statusUpdateInterval" value="10" min="1" max="60">
+                            <span class="input-group-text">seconds</span>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" id="saveDataSettings">Save Settings</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Maintenance -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">System Maintenance</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label class="form-label">Database</label>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-warning" id="pruneDatabase">
+                                <i class="fas fa-broom me-1"></i> Prune Old Data
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" id="resetDatabase" data-bs-toggle="modal" data-bs-target="#resetConfirmModal">
+                                <i class="fas fa-trash-alt me-1"></i> Reset Database
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">System Status</label>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center bg-dark text-light border-secondary">
+                                Database Size
+                                <span class="badge bg-primary">1.2 MB</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center bg-dark text-light border-secondary">
+                                Sensor Records
+                                <span class="badge bg-primary">2,345</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center bg-dark text-light border-secondary">
+                                MQTT Status
+                                <span class="badge bg-success">Connected</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" id="checkSystemStatus">
+                        <i class="fas fa-sync-alt me-1"></i> Check Status
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Database Confirmation Modal -->
+<div class="modal fade" id="resetConfirmModal" tabindex="-1" aria-labelledby="resetConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetConfirmModalLabel">Confirm Database Reset</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-1"></i> Warning: This will delete all sensor data and reset all schedules. This action cannot be undone.
+                </div>
+                <p>Please type <strong>RESET</strong> to confirm:</p>
+                <input type="text" class="form-control" id="resetConfirmInput">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmReset" disabled>Reset Database</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Toggle API key visibility
+    function toggleApiKeyVisibility() {
+        const apiKeyInput = document.getElementById('apiKey');
+        const toggleBtn = document.getElementById('toggleApiKey').querySelector('i');
+        
+        if (apiKeyInput.type === 'password') {
+            apiKeyInput.type = 'text';
+            toggleBtn.classList.remove('fa-eye');
+            toggleBtn.classList.add('fa-eye-slash');
+        } else {
+            apiKeyInput.type = 'password';
+            toggleBtn.classList.remove('fa-eye-slash');
+            toggleBtn.classList.add('fa-eye');
+        }
+    }
+    
+    // Generate a new API key
+    function generateApiKey() {
+        const characters = 'abcdef0123456789';
+        const sections = [8, 4, 4, 4, 12];
+        let apiKey = '';
+        
+        sections.forEach((length, index) => {
+            for (let i = 0; i < length; i++) {
+                apiKey += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            if (index < sections.length - 1) {
+                apiKey += '-';
+            }
+        });
+        
+        document.getElementById('apiKey').value = apiKey;
+    }
+    
+    // Save API configuration
+    function saveApiConfig() {
+        const apiKey = document.getElementById('apiKey').value;
+        const mqttBroker = document.getElementById('mqttBroker').value;
+        const mqttPort = document.getElementById('mqttPort').value;
+        
+        // Validate inputs
+        if (!apiKey || !mqttBroker || !mqttPort) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        // Show success message
+        alert('API configuration saved successfully');
+    }
+    
+    // Toggle notification options
+    function toggleNotificationOptions() {
+        const enableNotifications = document.getElementById('enableNotifications');
+        const notificationOptions = document.getElementById('notificationOptions');
+        
+        if (enableNotifications.checked) {
+            notificationOptions.style.display = 'block';
+        } else {
+            notificationOptions.style.display = 'none';
+        }
+    }
+    
+    // Save notification settings
+    function saveNotificationSettings() {
+        const enableNotifications = document.getElementById('enableNotifications').checked;
+        const email = document.getElementById('notificationEmail').value;
+        
+        if (enableNotifications && !email) {
+            alert('Please enter an email address for notifications');
+            return;
+        }
+        
+        // Show success message
+        alert('Notification settings saved successfully');
+    }
+    
+    // Save data settings
+    function saveDataSettings() {
+        const dataRetention = document.getElementById('dataRetention').value;
+        const sensorInterval = document.getElementById('sensorUpdateInterval').value;
+        const statusInterval = document.getElementById('statusUpdateInterval').value;
+        
+        // Show success message
+        alert('Data settings saved successfully');
+    }
+    
+    // Prune database
+    function pruneDatabase() {
+        if (confirm('Are you sure you want to remove old data according to the retention period?')) {
+            // Show success message
+            alert('Database pruned successfully');
+        }
+    }
+    
+    // Reset database confirmation
+    function setupResetConfirmation() {
+        const resetInput = document.getElementById('resetConfirmInput');
+        const resetButton = document.getElementById('confirmReset');
+        
+        resetInput.addEventListener('input', function() {
+            resetButton.disabled = this.value !== 'RESET';
+        });
+        
+        resetButton.addEventListener('click', function() {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('resetConfirmModal'));
+            modal.hide();
+            
+            // Show success message
+            alert('Database has been reset successfully');
+        });
+    }
+    
+    // Check system status
+    function checkSystemStatus() {
+        // Simulate checking system status
+        const statusItems = document.querySelectorAll('.list-group-item .badge');
+        
+        // Show loading state
+        statusItems.forEach(item => {
+            item.textContent = 'Checking...';
+            item.classList.remove('bg-success', 'bg-danger', 'bg-primary');
+            item.classList.add('bg-secondary');
+        });
+        
+        // Simulate API call delay
+        setTimeout(() => {
+            // Update with new values
+            statusItems[0].textContent = '1.2 MB';
+            statusItems[0].classList.add('bg-primary');
+            
+            statusItems[1].textContent = '2,345';
+            statusItems[1].classList.add('bg-primary');
+            
+            statusItems[2].textContent = 'Connected';
+            statusItems[2].classList.add('bg-success');
+        }, 1000);
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up toggle API key visibility
+        document.getElementById('toggleApiKey').addEventListener('click', toggleApiKeyVisibility);
+        
+        // Set up generate API key
+        document.getElementById('generateApiKey').addEventListener('click', generateApiKey);
+        
+        // Set up save API config
+        document.getElementById('saveApiConfig').addEventListener('click', saveApiConfig);
+        
+        // Set up toggle notification options
+        document.getElementById('enableNotifications').addEventListener('change', toggleNotificationOptions);
+        
+        // Set up save notification settings
+        document.getElementById('saveNotificationSettings').addEventListener('click', saveNotificationSettings);
+        
+        // Set up save data settings
+        document.getElementById('saveDataSettings').addEventListener('click', saveDataSettings);
+        
+        // Set up prune database
+        document.getElementById('pruneDatabase').addEventListener('click', pruneDatabase);
+        
+        // Set up reset confirmation
+        setupResetConfirmation();
+        
+        // Set up check system status
+        document.getElementById('checkSystemStatus').addEventListener('click', checkSystemStatus);
+    });
+</script>
+{% endblock %} 

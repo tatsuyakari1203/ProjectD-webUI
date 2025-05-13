@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Zone Control</h5>
+                </div>
+                <div class="card-body">
+                    <p>Manage irrigation zones by controlling individual relays. You can turn zones on/off and set durations for automated control.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for relay in relays %}
+        <div class="col-lg-6 mb-4">
+            <div class="card" data-relay-id="{{ relay.id }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Zone {{ relay.id }}: {{ relay.name }}</h5>
+                    <span class="badge {{ relay.state ? 'bg-success' : 'bg-secondary' }}">
+                        {{ relay.state ? 'ON' : 'OFF' }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {% if relay.state and relay.remaining_time > 0 %}
+                            <div class="mb-3">
+                                <h6><i class="fas fa-stopwatch me-2"></i>Remaining Time</h6>
+                                <p class="remaining-time fs-4" data-seconds="{{ relay.remaining_time }}">
+                                    {{ relay.remaining_time // 60 }}:{{ (relay.remaining_time % 60)|string|zfill(2) }}
+                                </p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <h6><i class="fas fa-calendar-alt me-2"></i>Last Updated</h6>
+                                <p class="format-date" data-date="{{ relay.last_updated }}">{{ relay.last_updated }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-cog me-2"></i>Controls</h6>
+                            <form action="{{ url_for('main.relay_control') }}" method="POST" class="mt-3">
+                                <input type="hidden" name="relay_id" value="{{ relay.id }}">
+                                
+                                <div class="input-group mb-3">
+                                    <span class="input-group-text">Duration</span>
+                                    <input type="number" class="form-control" name="duration" min="1" max="180" value="15" {{ relay.state ? 'disabled' : '' }}>
+                                    <span class="input-group-text">minutes</span>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    {% if not relay.state %}
+                                    <button type="submit" name="action" value="on" class="btn btn-success">
+                                        <i class="fas fa-power-off me-1"></i>Turn On
+                                    </button>
+                                    {% else %}
+                                    <button type="submit" name="action" value="off" class="btn btn-danger">
+                                        <i class="fas fa-power-off me-1"></i>Turn Off
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#editRelay{{ relay.id }}">
+                        <i class="fas fa-edit me-1"></i>Edit Zone Name
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Edit Relay Name Modal -->
+        <div class="modal fade" id="editRelay{{ relay.id }}" tabindex="-1" aria-labelledby="editRelayLabel{{ relay.id }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content bg-dark">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editRelayLabel{{ relay.id }}">Edit Zone {{ relay.id }} Name</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editRelayForm{{ relay.id }}">
+                            <div class="mb-3">
+                                <label for="relayName{{ relay.id }}" class="form-label">Zone Name</label>
+                                <input type="text" class="form-control" id="relayName{{ relay.id }}" value="{{ relay.name }}">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary save-relay-name" data-relay-id="{{ relay.id }}">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Update remaining time counters
+    function updateRemainingTimes() {
+        document.querySelectorAll('.remaining-time').forEach(element => {
+            let seconds = parseInt(element.dataset.seconds || 0);
+            if (seconds > 0) {
+                seconds--;
+                element.dataset.seconds = seconds;
+                element.textContent = formatRemainingTime(seconds);
+            } else {
+                element.textContent = '0:00';
+            }
+        });
+    }
+
+    // Auto-refresh for relay status
+    function updateRelayStatus() {
+        fetchData('relay-status', data => {
+            data.forEach(relay => {
+                const card = document.querySelector(`.card[data-relay-id="${relay.id}"]`);
+                if (card) {
+                    const badge = card.querySelector('.badge');
+                    if (badge) {
+                        badge.className = relay.state ? 'badge bg-success' : 'badge bg-secondary';
+                        badge.textContent = relay.state ? 'ON' : 'OFF';
+                    }
+                    
+                    // Update form elements based on state
+                    const durationInput = card.querySelector('input[name="duration"]');
+                    if (durationInput) {
+                        durationInput.disabled = relay.state;
+                    }
+                    
+                    // Update buttons
+                    const form = card.querySelector('form');
+                    if (form) {
+                        const buttonsContainer = form.querySelector('.d-grid');
+                        if (buttonsContainer) {
+                            if (relay.state) {
+                                buttonsContainer.innerHTML = `
+                                    <button type="submit" name="action" value="off" class="btn btn-danger">
+                                        <i class="fas fa-power-off me-1"></i>Turn Off
+                                    </button>
+                                `;
+                            } else {
+                                buttonsContainer.innerHTML = `
+                                    <button type="submit" name="action" value="on" class="btn btn-success">
+                                        <i class="fas fa-power-off me-1"></i>Turn On
+                                    </button>
+                                `;
+                            }
+                        }
+                    }
+                    
+                    // Update remaining time
+                    if (relay.state && relay.remaining_time > 0) {
+                        let remainingTimeEl = card.querySelector('.remaining-time');
+                        
+                        if (!remainingTimeEl) {
+                            // Create remaining time element if it doesn't exist
+                            const firstCol = card.querySelector('.col-md-6');
+                            const newEl = document.createElement('div');
+                            newEl.className = 'mb-3';
+                            newEl.innerHTML = `
+                                <h6><i class="fas fa-stopwatch me-2"></i>Remaining Time</h6>
+                                <p class="remaining-time fs-4" data-seconds="${relay.remaining_time}">
+                                    ${formatRemainingTime(relay.remaining_time)}
+                                </p>
+                            `;
+                            firstCol.insertBefore(newEl, firstCol.firstChild);
+                            remainingTimeEl = card.querySelector('.remaining-time');
+                        } else {
+                            remainingTimeEl.dataset.seconds = relay.remaining_time;
+                            remainingTimeEl.textContent = formatRemainingTime(relay.remaining_time);
+                        }
+                    } else {
+                        // Remove remaining time element if relay is off
+                        const remainingTimeContainer = card.querySelector('.remaining-time').closest('.mb-3');
+                        if (remainingTimeContainer) {
+                            remainingTimeContainer.remove();
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // Handle saving relay name
+    function setupRelayNameEdit() {
+        document.querySelectorAll('.save-relay-name').forEach(button => {
+            button.addEventListener('click', function() {
+                const relayId = this.getAttribute('data-relay-id');
+                const nameInput = document.getElementById(`relayName${relayId}`);
+                const newName = nameInput.value.trim();
+                
+                if (newName) {
+                    postData('relay-name', {
+                        relay_id: parseInt(relayId),
+                        name: newName
+                    }, response => {
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById(`editRelay${relayId}`));
+                        modal.hide();
+                        
+                        // Update name in the UI
+                        const cardHeader = document.querySelector(`.card[data-relay-id="${relayId}"] .card-header h5`);
+                        if (cardHeader) {
+                            cardHeader.textContent = `Zone ${relayId}: ${newName}`;
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Start remaining time countdown
+        setInterval(updateRemainingTimes, 1000);
+        
+        // Auto-refresh relay status
+        setInterval(updateRelayStatus, 10000);
+        
+        // Setup relay name editing
+        setupRelayNameEdit();
+    });
+</script>
+{% endblock %} 

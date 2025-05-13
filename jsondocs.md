@@ -715,7 +715,7 @@ Sau đó gửi tiếp:
 ```javascript
 // Ví dụ sử dụng thư viện MQTT.js
 const mqtt = require('mqtt');
-const client = mqtt.connect('mqtt://karis.cloud:1883');
+const client = mqtt.connect('mqtt://iot.karis.cloud:1883');
 
 client.on('connect', () => {
   console.log('Connected to MQTT broker');

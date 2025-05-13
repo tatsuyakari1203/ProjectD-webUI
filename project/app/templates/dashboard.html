@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Current time and date -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-clock me-2"></i>Current Time</h5>
+                    <p class="sensor-value current-time">{{ now|default('Loading...') }}</p>
+                    <p class="text-muted">System is {{ relays|selectattr('state', 'equalto', true)|list|length > 0 ? 'active' : 'idle' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title"><i class="fas fa-calendar-day me-2"></i>System Status</h5>
+                    <div class="mt-2">
+                        <p><strong>Active Zones:</strong> {{ relays|selectattr('state', 'equalto', true)|list|length }}/{{ relays|length }}</p>
+                        <p><strong>Active Schedules:</strong> {{ running_schedules|length }}/{{ schedules|length }}</p>
+                        <p><strong>Next Schedule:</strong> 
+                            {% if schedules and schedules[0].next_run %}
+                                <span class="format-date" data-date="{{ schedules[0].next_run }}">{{ schedules[0].next_run }}</span>
+                            {% else %}
+                                None
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environmental conditions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">Environmental Conditions</h4>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-temperature-high fa-2x mb-2"></i>
+                    <h5 class="card-title">Temperature</h5>
+                    <p class="sensor-value temperature">
+                        {% if sensor_data and sensor_data.temperature is not none %}
+                            {{ "%.1f"|format(sensor_data.temperature) }}°C
+                        {% else %}
+                            --°C
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-water fa-2x mb-2"></i>
+                    <h5 class="card-title">Humidity</h5>
+                    <p class="sensor-value humidity">
+                        {% if sensor_data and sensor_data.humidity is not none %}
+                            {{ "%.1f"|format(sensor_data.humidity) }}%
+                        {% else %}
+                            --%
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-thermometer-full fa-2x mb-2"></i>
+                    <h5 class="card-title">Heat Index</h5>
+                    <p class="sensor-value heat-index">
+                        {% if sensor_data and sensor_data.heat_index is not none %}
+                            {{ "%.1f"|format(sensor_data.heat_index) }}°C
+                        {% else %}
+                            --°C
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-cloud-rain fa-2x mb-2"></i>
+                    <h5 class="card-title">Rain Status</h5>
+                    <p class="sensor-value">
+                        {% if sensor_data and sensor_data.rain is not none %}
+                            <span class="{{ sensor_data.rain ? 'text-info' : 'text-muted' }}">
+                                {{ sensor_data.rain ? 'Raining' : 'Not Raining' }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">Unknown</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active relay zones -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">Irrigation Zones</h4>
+        </div>
+        
+        {% for relay in relays %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Zone {{ relay.id }}: {{ relay.name }}</h5>
+                    <span class="badge {{ relay.state ? 'bg-success' : 'bg-secondary' }}">
+                        {{ relay.state ? 'ON' : 'OFF' }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    {% if relay.state and relay.remaining_time > 0 %}
+                    <p><i class="fas fa-stopwatch me-2"></i>Remaining: <span class="remaining-time" data-seconds="{{ relay.remaining_time }}">{{ relay.remaining_time // 60 }}:{{ (relay.remaining_time % 60)|string|zfill(2) }}</span></p>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-around mt-3">
+                        <form action="{{ url_for('main.relay_control') }}" method="POST">
+                            <input type="hidden" name="relay_id" value="{{ relay.id }}">
+                            <input type="hidden" name="action" value="on">
+                            <button type="submit" class="btn btn-success btn-sm" {{ relay.state ? 'disabled' : '' }}>
+                                <i class="fas fa-power-off me-1"></i>Turn On
+                            </button>
+                        </form>
+                        
+                        <form action="{{ url_for('main.relay_control') }}" method="POST">
+                            <input type="hidden" name="relay_id" value="{{ relay.id }}">
+                            <input type="hidden" name="action" value="off">
+                            <button type="submit" class="btn btn-secondary btn-sm" {{ not relay.state ? 'disabled' : '' }}>
+                                <i class="fas fa-power-off me-1"></i>Turn Off
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Upcoming schedules -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">Upcoming Schedules</h4>
+        </div>
+        
+        {% if schedules %}
+            {% for schedule in schedules[:3] %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Schedule #{{ schedule.id }}</h5>
+                        <span class="badge 
+                            {%- if schedule.state == 'running' -%} bg-info
+                            {%- elif schedule.state == 'completed' -%} bg-success
+                            {%- else -%} bg-secondary
+                            {%- endif -%}">
+                            {{ schedule.state|title }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p><i class="fas fa-calendar-day me-2"></i><span class="format-days" data-days="{{ schedule.days }}">{{ schedule.days }}</span></p>
+                        <p><i class="fas fa-clock me-2"></i>Time: {{ schedule.time }}</p>
+                        <p><i class="fas fa-hourglass-half me-2"></i>Duration: {{ schedule.duration }} minutes</p>
+                        <p><i class="fas fa-map-marker-alt me-2"></i>Zones: {{ schedule.zones_list|join(', ') }}</p>
+                        
+                        {% if schedule.next_run %}
+                        <p><i class="fas fa-calendar-alt me-2"></i>Next run: <span class="format-date" data-date="{{ schedule.next_run }}">{{ schedule.next_run }}</span></p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer text-center">
+                        <a href="{{ url_for('main.schedules') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-edit me-1"></i>Manage
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No active schedules found. <a href="{{ url_for('main.schedules') }}">Create one</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Update remaining time counters
+    function updateRemainingTimes() {
+        document.querySelectorAll('.remaining-time').forEach(element => {
+            let seconds = parseInt(element.dataset.seconds || 0);
+            if (seconds > 0) {
+                seconds--;
+                element.dataset.seconds = seconds;
+                element.textContent = formatRemainingTime(seconds);
+            } else {
+                element.textContent = '0:00';
+            }
+        });
+    }
+
+    // Auto-refresh for sensor data
+    function updateSensorData() {
+        fetchData('sensor-data', data => {
+            // Update temperature
+            const tempElement = document.querySelector('.sensor-value.temperature');
+            if (tempElement && data.temperature !== null) {
+                tempElement.textContent = data.temperature.toFixed(1) + '°C';
+            }
+            
+            // Update humidity
+            const humElement = document.querySelector('.sensor-value.humidity');
+            if (humElement && data.humidity !== null) {
+                humElement.textContent = data.humidity.toFixed(1) + '%';
+            }
+            
+            // Update heat index
+            const heatElement = document.querySelector('.sensor-value.heat-index');
+            if (heatElement && data.heat_index !== null) {
+                heatElement.textContent = data.heat_index.toFixed(1) + '°C';
+            }
+        });
+    }
+
+    // Auto-refresh for relay status
+    function updateRelayStatus() {
+        fetchData('relay-status', data => {
+            data.forEach(relay => {
+                const card = document.querySelector(`.card[data-relay-id="${relay.id}"]`);
+                if (card) {
+                    const badge = card.querySelector('.badge');
+                    if (badge) {
+                        badge.className = relay.state ? 'badge bg-success' : 'badge bg-secondary';
+                        badge.textContent = relay.state ? 'ON' : 'OFF';
+                    }
+                    
+                    const onButton = card.querySelector('button[name="action"][value="on"]');
+                    if (onButton) {
+                        onButton.disabled = relay.state;
+                    }
+                    
+                    const offButton = card.querySelector('button[name="action"][value="off"]');
+                    if (offButton) {
+                        offButton.disabled = !relay.state;
+                    }
+                    
+                    // Update remaining time
+                    const remainingTimeEl = card.querySelector('.remaining-time');
+                    if (remainingTimeEl && relay.remaining_time > 0) {
+                        remainingTimeEl.dataset.seconds = relay.remaining_time;
+                        remainingTimeEl.textContent = formatRemainingTime(relay.remaining_time);
+                    }
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Start remaining time countdown
+        setInterval(updateRemainingTimes, 1000);
+        
+        // Auto-refresh data
+        setInterval(updateSensorData, 5000);
+        setInterval(updateRelayStatus, 10000);
+    });
+</script>
+{% endblock %} 

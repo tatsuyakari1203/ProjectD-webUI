@@ -1,0 +1,204 @@
+/* Custom CSS for Irrigation Control System */
+
+:root {
+    --primary-dark: #121212;
+    --secondary-dark: #1e1e1e;
+    --accent-color: #4caf50;
+    --text-color: #e0e0e0;
+    --border-color: #333;
+    --card-bg: #252525;
+    --hover-bg: #353535;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --danger-color: #f44336;
+    --info-color: #2196f3;
+}
+
+body {
+    background-color: var(--primary-dark);
+    color: var(--text-color);
+}
+
+/* Sidebar styles */
+.sidebar {
+    background-color: var(--secondary-dark) !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    min-height: 100vh;
+}
+
+.sidebar .nav-link {
+    color: var(--text-color);
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+    margin: 0.2rem 0;
+}
+
+.sidebar .nav-link:hover {
+    background-color: var(--hover-bg);
+}
+
+.sidebar .nav-link.active {
+    background-color: var(--accent-color);
+    color: #fff;
+}
+
+/* Card styles */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-header {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-footer {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Status colors */
+.status-on {
+    color: var(--success-color);
+}
+
+.status-off {
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.status-running {
+    color: var(--info-color);
+}
+
+.status-idle {
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.status-completed {
+    color: var(--success-color);
+}
+
+/* Sensor value display */
+.sensor-value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.sensor-value.temperature {
+    color: #f44336;
+}
+
+.sensor-value.humidity {
+    color: #2196f3;
+}
+
+.sensor-value.heat-index {
+    color: #ff9800;
+}
+
+.sensor-value.soil-moisture {
+    color: #4caf50;
+}
+
+.sensor-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* Toggle switch for relays */
+.relay-toggle {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.relay-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.relay-toggle .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #333;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.relay-toggle .slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.relay-toggle input:checked + .slider {
+    background-color: var(--success-color);
+}
+
+.relay-toggle input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* Chart styles */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Loading animation */
+.loading {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--accent-color);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .sidebar {
+        padding-top: 15px;
+    }
+    
+    .sidebar .nav-link {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .sensor-value {
+        font-size: 1.5rem;
+    }
+} 
