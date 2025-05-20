@@ -259,6 +259,7 @@
                                 cardHeaderNameSpan.textContent = newName;
                             }
                             if (typeof showToast === 'function') showToast('Success', `Zone ${relayId} name updated to ${newName}.`);
+                            location.reload();
                         },
                         function(errorResponse) { 
                             console.error('[Relays] Error saving relay name. Response:', errorResponse);
@@ -358,11 +359,12 @@
                     postData('relays/all-off', {}, 
                         response => { // Success callback for postData
                             showToast('Command Sent', response.message || 'All relays commanded off.', 'success');
-                            // Re-enable button
-                            this.disabled = false;
-                            this.innerHTML = '<i class="fas fa-power-off me-1"></i> Turn All Relays Off';
-                            // Optionally, trigger an immediate refresh of relay statuses
-                            updateRelayStatus(); 
+                            // Re-enable button - NO LONGER NEEDED IF RELOADING
+                            // this.disabled = false;
+                            // this.innerHTML = '<i class="fas fa-power-off me-1"></i> Turn All Relays Off';
+                            // Optionally, trigger an immediate refresh of relay statuses - NO LONGER NEEDED
+                            // updateRelayStatus(); 
+                            location.reload(); // ADD THIS LINE
                         },
                         errorResponse => { // Error callback for postData
                             let errorMsg = 'Failed to turn all relays off.';

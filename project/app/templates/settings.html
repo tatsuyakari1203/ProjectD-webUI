@@ -308,6 +308,8 @@
                 
                 mqttStatusEl.textContent = data.mqtt_status;
                 mqttStatusEl.className = 'badge ' + (data.mqtt_status === 'Connected' ? 'bg-success' : 'bg-danger');
+                
+                window.location.reload();
             } else {
                 throw new Error(data.error || 'Failed to fetch system status');
             }

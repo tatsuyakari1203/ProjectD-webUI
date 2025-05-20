@@ -610,14 +610,8 @@
                 modal.hide();
             }
             
-            // Remove row from table
-            const row = document.querySelector(`tr[data-schedule-id="${scheduleId}"]`);
-            if (row) row.remove();
-            
-            // If no more schedules, reload page to show empty state
-            if (document.querySelectorAll('table tbody tr').length === 0) {
-                window.location.reload();
-            }
+            // Reload page to reflect deletion
+            window.location.reload();
         })
         .catch(error => {
             console.error('Error deleting schedule:', error);

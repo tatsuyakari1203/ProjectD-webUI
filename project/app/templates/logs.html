@@ -395,6 +395,7 @@
                 console.error("Error fetching logs:", response);
             }
             renderLogChart(); // Render/update chart after fetching logs
+            location.reload();
         }, error => {
             currentLogDataForChart = [];
             totalLogsCountEl.textContent = 'Total: 0';
@@ -460,6 +461,7 @@
                     } else {
                         showToast('Log Config Error', response.error || 'Failed to send command.', 'danger');
                     }
+                    location.reload();
                 },
                 error => {
                     console.error("[Logs] postData logconfig - error. Detail:", error);

@@ -495,6 +495,7 @@
                 } else if (lightTableBody) {
                     lightTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No light data.</td></tr>';
                 }
+                location.reload(); 
             },
             error => {
                 console.error("[Sensors] Error during refreshSensorData:", error);
@@ -723,6 +724,8 @@
         refreshButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
         refreshButton.disabled = true;
         refreshSensorData(); 
+        // The following timeout is no longer strictly necessary if the page reloads,
+        // but doesn't harm to keep for visual feedback before reload kicks in.
         setTimeout(() => {
             refreshButton.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
             refreshButton.disabled = false;

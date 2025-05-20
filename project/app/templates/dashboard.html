@@ -237,6 +237,7 @@
                 if (heatElement && data.heat_index !== null) {
                     heatElement.textContent = data.heat_index.toFixed(1) + '°C';
                 }
+                location.reload();
             },
             error => {
                 console.error('[Dashboard] Failed to fetch sensor data:', error);
@@ -295,6 +296,7 @@
                         }
                     } 
                 }); 
+                location.reload();
             },
             error => { 
                 console.error('[Dashboard] Failed to fetch relay status:', error);
