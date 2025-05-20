@@ -5,7 +5,7 @@
     <div class="row mb-4">
         <div class="col-12 d-flex justify-content-between align-items-center">
             <h4>Irrigation Schedules</h4>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addScheduleModal">
+            <button type="button" class="btn btn-primary" id="addScheduleBtn">
                 <i class="fas fa-plus me-1"></i> Add Schedule
             </button>
         </div>
@@ -356,7 +356,8 @@
         });
         
         // Show the modal
-        const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+        const modalElement = document.getElementById('scheduleModal');
+        const modal = new bootstrap.Modal(modalElement);
         modal.show();
     }
     
@@ -369,7 +370,17 @@
         document.getElementById('scheduleModalLabel').textContent = 'Edit Irrigation Schedule';
         
         // Get schedule data
-        fetchData(`schedules/${scheduleId}`, schedule => {
+        fetch(`/api/schedules/${scheduleId}`, {
+            headers: {
+                'X-API-Key': API_KEY
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            let schedule = data.schedule;
             // Set form fields
             document.getElementById('scheduleId').value = schedule.id;
             document.getElementById('scheduleTime').value = schedule.time;
@@ -433,8 +444,13 @@
             }
             
             // Show the modal
-            const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+            const modalElement = document.getElementById('scheduleModal');
+            const modal = new bootstrap.Modal(modalElement);
             modal.show();
+        })
+        .catch(error => {
+            console.error('Error fetching schedule:', error);
+            alert('Failed to fetch schedule data. Please try again.');
         });
     }
     
@@ -519,6 +535,7 @@
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-API-Key': API_KEY
                 },
                 body: JSON.stringify(scheduleData)
             })
@@ -528,8 +545,11 @@
             })
             .then(data => {
                 // Hide modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('scheduleModal'));
-                modal.hide();
+                const modalElement = document.getElementById('scheduleModal');
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                }
                 
                 // Reload page to show updated schedule
                 window.location.reload();
@@ -544,6 +564,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-API-Key': API_KEY
                 },
                 body: JSON.stringify(scheduleData)
             })
@@ -553,8 +574,11 @@
             })
             .then(data => {
                 // Hide modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('scheduleModal'));
-                modal.hide();
+                const modalElement = document.getElementById('scheduleModal');
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                }
                 
                 // Reload page to show new schedule
                 window.location.reload();
@@ -569,7 +593,10 @@
     // Delete schedule
     function deleteSchedule(scheduleId) {
         fetch(`/api/schedules/${scheduleId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-API-Key': API_KEY
+            }
         })
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -577,8 +604,11 @@
         })
         .then(data => {
             // Hide modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
-            modal.hide();
+            const modalElement = document.getElementById('deleteModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
             
             // Remove row from table
             const row = document.querySelector(`tr[data-schedule-id="${scheduleId}"]`);
@@ -601,6 +631,7 @@
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
+                'X-API-Key': API_KEY
             },
             body: JSON.stringify({
                 active: currentActive === 'true' ? false : true
@@ -622,7 +653,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         // Add schedule button
-        document.querySelector('[data-bs-target="#addScheduleModal"]').addEventListener('click', showAddScheduleModal);
+        document.getElementById('addScheduleBtn').addEventListener('click', showAddScheduleModal);
         
         // Edit schedule buttons
         document.querySelectorAll('.edit-schedule').forEach(button => {
@@ -646,7 +677,8 @@
             button.addEventListener('click', function() {
                 const scheduleId = this.getAttribute('data-schedule-id');
                 document.getElementById('confirmDelete').setAttribute('data-schedule-id', scheduleId);
-                const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                const modalElement = document.getElementById('deleteModal');
+                const modal = new bootstrap.Modal(modalElement);
                 modal.show();
             });
         });

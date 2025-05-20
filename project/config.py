@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import uuid
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -15,7 +16,7 @@ class Config:
     # MQTT configuration
     MQTT_BROKER_URL = os.environ.get('MQTT_BROKER_URL') or 'iot.karis.cloud'
     MQTT_BROKER_PORT = int(os.environ.get('MQTT_BROKER_PORT') or 1883)
-    MQTT_CLIENT_ID = os.environ.get('MQTT_CLIENT_ID') or 'irrigation_web_app'
+    MQTT_CLIENT_ID = os.environ.get('MQTT_CLIENT_ID') or f'irrigation_web_app_{uuid.uuid4().hex[:12]}'
     MQTT_KEEPALIVE = int(os.environ.get('MQTT_KEEPALIVE') or 60)
     
     # API key for authentication
@@ -28,8 +29,10 @@ class Config:
     MQTT_TOPIC_SCHEDULE = 'irrigation/esp32_6relay/schedule'
     MQTT_TOPIC_SCHEDULE_STATUS = 'irrigation/esp32_6relay/schedule/status'
     MQTT_TOPIC_ENVIRONMENT = 'irrigation/esp32_6relay/environment'
+    MQTT_TOPIC_LOGS = 'irrigation/esp32_6relay/logs'
+    MQTT_TOPIC_LOGCONFIG = 'irrigation/esp32_6relay/logconfig'
     
     # Data refresh intervals (seconds)
     SENSOR_REFRESH_INTERVAL = 5
-    RELAY_STATUS_REFRESH_INTERVAL = 10
+    RELAY_STATUS_REFRESH_INTERVAL = 3
     SCHEDULE_STATUS_REFRESH_INTERVAL = 10 

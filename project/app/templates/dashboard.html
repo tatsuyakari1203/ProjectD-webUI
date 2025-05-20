@@ -9,7 +9,7 @@
                 <div class="card-body">
                     <h5 class="card-title"><i class="fas fa-clock me-2"></i>Current Time</h5>
                     <p class="sensor-value current-time">{{ now|default('Loading...') }}</p>
-                    <p class="text-muted">System is {{ relays|selectattr('state', 'equalto', true)|list|length > 0 ? 'active' : 'idle' }}</p>
+                    <p class="text-muted">System is {{ 'active' if relays|selectattr('state', 'equalto', true)|list|length > 0 else 'idle' }}</p>
                 </div>
             </div>
         </div>
@@ -94,8 +94,8 @@
                     <h5 class="card-title">Rain Status</h5>
                     <p class="sensor-value">
                         {% if sensor_data and sensor_data.rain is not none %}
-                            <span class="{{ sensor_data.rain ? 'text-info' : 'text-muted' }}">
-                                {{ sensor_data.rain ? 'Raining' : 'Not Raining' }}
+                            <span class="{{ 'text-info' if sensor_data.rain else 'text-muted' }}">
+                                {{ 'Raining' if sensor_data.rain else 'Not Raining' }}
                             </span>
                         {% else %}
                             <span class="text-muted">Unknown</span>
@@ -117,8 +117,8 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Zone {{ relay.id }}: {{ relay.name }}</h5>
-                    <span class="badge {{ relay.state ? 'bg-success' : 'bg-secondary' }}">
-                        {{ relay.state ? 'ON' : 'OFF' }}
+                    <span class="badge {{ 'bg-success' if relay.state else 'bg-secondary' }}">
+                        {{ 'ON' if relay.state else 'OFF' }}
                     </span>
                 </div>
                 <div class="card-body">
@@ -130,7 +130,7 @@
                         <form action="{{ url_for('main.relay_control') }}" method="POST">
                             <input type="hidden" name="relay_id" value="{{ relay.id }}">
                             <input type="hidden" name="action" value="on">
-                            <button type="submit" class="btn btn-success btn-sm" {{ relay.state ? 'disabled' : '' }}>
+                            <button type="submit" class="btn btn-success btn-sm" {{ 'disabled' if relay.state else '' }}>
                                 <i class="fas fa-power-off me-1"></i>Turn On
                             </button>
                         </form>
@@ -138,7 +138,7 @@
                         <form action="{{ url_for('main.relay_control') }}" method="POST">
                             <input type="hidden" name="relay_id" value="{{ relay.id }}">
                             <input type="hidden" name="action" value="off">
-                            <button type="submit" class="btn btn-secondary btn-sm" {{ not relay.state ? 'disabled' : '' }}>
+                            <button type="submit" class="btn btn-secondary btn-sm" {{ 'disabled' if not relay.state else '' }}>
                                 <i class="fas fa-power-off me-1"></i>Turn Off
                             </button>
                         </form>
@@ -216,67 +216,108 @@
 
     // Auto-refresh for sensor data
     function updateSensorData() {
-        fetchData('sensor-data', data => {
-            // Update temperature
-            const tempElement = document.querySelector('.sensor-value.temperature');
-            if (tempElement && data.temperature !== null) {
-                tempElement.textContent = data.temperature.toFixed(1) + '°C';
+        fetchData(
+            'sensor-data',
+            data => {
+                console.log('[Dashboard] updateSensorData - success. Data:', data);
+                // Update temperature
+                const tempElement = document.querySelector('.sensor-value.temperature');
+                if (tempElement && data.temperature !== null) {
+                    tempElement.textContent = data.temperature.toFixed(1) + '°C';
+                }
+                
+                // Update humidity
+                const humElement = document.querySelector('.sensor-value.humidity');
+                if (humElement && data.humidity !== null) {
+                    humElement.textContent = data.humidity.toFixed(1) + '%';
+                }
+                
+                // Update heat index
+                const heatElement = document.querySelector('.sensor-value.heat-index');
+                if (heatElement && data.heat_index !== null) {
+                    heatElement.textContent = data.heat_index.toFixed(1) + '°C';
+                }
+            },
+            error => {
+                console.error('[Dashboard] Failed to fetch sensor data:', error);
             }
-            
-            // Update humidity
-            const humElement = document.querySelector('.sensor-value.humidity');
-            if (humElement && data.humidity !== null) {
-                humElement.textContent = data.humidity.toFixed(1) + '%';
-            }
-            
-            // Update heat index
-            const heatElement = document.querySelector('.sensor-value.heat-index');
-            if (heatElement && data.heat_index !== null) {
-                heatElement.textContent = data.heat_index.toFixed(1) + '°C';
-            }
-        });
+        );
     }
 
     // Auto-refresh for relay status
     function updateRelayStatus() {
-        fetchData('relay-status', data => {
-            data.forEach(relay => {
-                const card = document.querySelector(`.card[data-relay-id="${relay.id}"]`);
-                if (card) {
-                    const badge = card.querySelector('.badge');
-                    if (badge) {
-                        badge.className = relay.state ? 'badge bg-success' : 'badge bg-secondary';
-                        badge.textContent = relay.state ? 'ON' : 'OFF';
-                    }
-                    
-                    const onButton = card.querySelector('button[name="action"][value="on"]');
-                    if (onButton) {
-                        onButton.disabled = relay.state;
-                    }
-                    
-                    const offButton = card.querySelector('button[name="action"][value="off"]');
-                    if (offButton) {
-                        offButton.disabled = !relay.state;
-                    }
-                    
-                    // Update remaining time
-                    const remainingTimeEl = card.querySelector('.remaining-time');
-                    if (remainingTimeEl && relay.remaining_time > 0) {
-                        remainingTimeEl.dataset.seconds = relay.remaining_time;
-                        remainingTimeEl.textContent = formatRemainingTime(relay.remaining_time);
-                    }
+        fetchData(
+            'relay-status', 
+            relaysData => { 
+                console.log('[Dashboard] updateRelayStatus - success. Data:', relaysData);
+                if (!Array.isArray(relaysData)) {
+                     console.error('[Dashboard] Invalid API response for relay-status: Expected an array, got:', relaysData);
+                     return;
                 }
-            });
-        });
+                relaysData.forEach(relay => {
+                    const relayCardSelector = `.card[data-relay-id="${relay.id}"]`; 
+                    const card = document.querySelector(relayCardSelector);
+
+                    if (card) {
+                        const badge = card.querySelector('.badge');
+                        if (badge) {
+                            badge.className = relay.state ? 'badge bg-success' : 'badge bg-secondary';
+                            badge.textContent = relay.state ? 'ON' : 'OFF';
+                        }
+                        
+                        const onButton = card.querySelector('button[name="action"][value="on"]');
+                        if (onButton) {
+                            onButton.disabled = relay.state;
+                        }
+                        
+                        const offButton = card.querySelector('button[name="action"][value="off"]');
+                        if (offButton) {
+                            offButton.disabled = !relay.state;
+                        }
+                        
+                        const remainingTimeEl = card.querySelector('.remaining-time');
+                        const pElement = remainingTimeEl ? remainingTimeEl.closest('p') : null;
+
+                        if (relay.state && relay.remaining_time > 0) {
+                            if (remainingTimeEl) {
+                                remainingTimeEl.dataset.seconds = relay.remaining_time;
+                                remainingTimeEl.textContent = formatRemainingTime(relay.remaining_time);
+                                if (pElement) pElement.style.display = 'block';
+                            } else {
+                                // Create the P element for remaining time if it doesn't exist
+                                // This is a bit more complex and assumes a specific structure to inject into.
+                                // For now, we rely on it being present from initial render if relay was on with duration.
+                            }
+                        } else {
+                            if (pElement) {
+                               pElement.style.display = 'none';
+                            }
+                        }
+                    } 
+                }); 
+            },
+            error => { 
+                console.error('[Dashboard] Failed to fetch relay status:', error);
+            }
+        );
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Start remaining time countdown
         setInterval(updateRemainingTimes, 1000);
         
-        // Auto-refresh data
-        setInterval(updateSensorData, 5000);
-        setInterval(updateRelayStatus, 10000);
+        // Use config object passed from Flask for intervals if available
+        const sensorInterval = (typeof config !== 'undefined' && config.SENSOR_REFRESH_INTERVAL) 
+                               ? config.SENSOR_REFRESH_INTERVAL * 1000 
+                               : 5000;
+        const relayInterval = (typeof config !== 'undefined' && config.RELAY_STATUS_REFRESH_INTERVAL) 
+                              ? config.RELAY_STATUS_REFRESH_INTERVAL * 1000 
+                              : 3000; // Default to 3s if config not defined in template context
+
+        updateSensorData(); // Initial call
+        setInterval(updateSensorData, sensorInterval);
+        
+        updateRelayStatus(); // Initial call
+        setInterval(updateRelayStatus, relayInterval);
     });
 </script>
 {% endblock %} 

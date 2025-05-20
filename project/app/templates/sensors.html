@@ -1,22 +1,75 @@
 {% extends "base.html" %}
 
-{% block head %}
-<!-- Chart.js additional plugins -->
+{% block head_extra %}
+<!-- Chart.js Core -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<!-- Chart.js Date Adapter -->
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+    /* ... existing styles ... */
+    .log-table-container {
+        max-height: 600px; /* Adjust as needed */
+        overflow-y: auto;
+    }
+    .log-message {
+        white-space: pre-wrap; /* Allow line breaks within messages */
+        word-break: break-all; /* Break long words if necessary */
+    }
+    .log-level-DEBUG { color: #90caf9; } /* Light Blue */
+    .log-level-INFO { color: #a5d6a7; } /* Light Green */
+    .log-level-WARNING { color: #ffe082; } /* Amber */
+    .log-level-ERROR { color: #ef9a9a; } /* Light Red */
+    .log-level-CRITICAL { color: #f48fb1; font-weight: bold; } /* Pink */
+
+    #logFilterForm .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+    #logFilterForm .form-control-sm, #logFilterForm .form-select-sm {
+        font-size: 0.85rem;
+    }
+    .log-row-performance td {
+        font-style: italic;
+    }
+    #logChartContainer {
+        min-height: 300px;
+    }
+    .chart-loading-error {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 250px; /* Or height of your chart canvas */
+        color: #dc3545; /* Bootstrap danger color */
+        font-style: italic;
+        background-color: rgba(0,0,0,0.1);
+        border: 1px dashed #dc3545;
+        border-radius: .25rem;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Current Environmental Data -->
     <div class="row mb-4">
-        <div class="col-12">
-            <h4 class="mb-3">Current Environmental Conditions</h4>
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Sensor Dashboard</h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-light btn-sm" id="refreshSensors">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
+                        <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#historyModal">
+                            <i class="fas fa-chart-line me-1"></i>History
+                        </button>
+                    </div>
         </div>
-        
-        <div class="col-md-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-4">
             <div class="card">
                 <div class="card-body text-center">
-                    <i class="fas fa-temperature-high fa-3x mb-3 text-danger"></i>
+                                    <i class="fas fa-temperature-high fa-2x mb-2"></i>
                     <h5 class="card-title">Temperature</h5>
                     <p class="sensor-value temperature">
                         {% if latest_sensor and latest_sensor.temperature is not none %}
@@ -25,19 +78,17 @@
                             --°C
                         {% endif %}
                     </p>
-                    <p class="text-muted small">
-                        Updated: <span class="format-date" data-date="{{ latest_sensor.timestamp if latest_sensor else '' }}">
-                            {{ latest_sensor.timestamp if latest_sensor else 'N/A' }}
-                        </span>
-                    </p>
+                                    {% if latest_sensor and latest_sensor.timestamp %}
+                                    <small class="text-muted format-date" data-date="{{ latest_sensor.timestamp }}">{{ latest_sensor.timestamp }}</small>
+                                    {% endif %}
                 </div>
             </div>
         </div>
         
-        <div class="col-md-3">
+                        <div class="col-lg-3 col-md-6 mb-4">
             <div class="card">
                 <div class="card-body text-center">
-                    <i class="fas fa-water fa-3x mb-3 text-primary"></i>
+                                    <i class="fas fa-water fa-2x mb-2"></i>
                     <h5 class="card-title">Humidity</h5>
                     <p class="sensor-value humidity">
                         {% if latest_sensor and latest_sensor.humidity is not none %}
@@ -46,231 +97,231 @@
                             --%
                         {% endif %}
                     </p>
-                    <p class="text-muted small">
-                        Updated: <span class="format-date" data-date="{{ latest_sensor.timestamp if latest_sensor else '' }}">
-                            {{ latest_sensor.timestamp if latest_sensor else 'N/A' }}
-                        </span>
-                    </p>
+                                    {% if latest_sensor and latest_sensor.timestamp %}
+                                    <small class="text-muted format-date" data-date="{{ latest_sensor.timestamp }}">{{ latest_sensor.timestamp }}</small>
+                                    {% endif %}
                 </div>
             </div>
         </div>
         
-        <div class="col-md-3">
+                        <div class="col-lg-3 col-md-6 mb-4">
             <div class="card">
                 <div class="card-body text-center">
-                    <i class="fas fa-thermometer-full fa-3x mb-3 text-warning"></i>
-                    <h5 class="card-title">Heat Index</h5>
-                    <p class="sensor-value heat-index">
-                        {% if latest_sensor and latest_sensor.heat_index is not none %}
-                            {{ "%.1f"|format(latest_sensor.heat_index) }}°C
+                                    <i class="fas fa-seedling fa-2x mb-2"></i>
+                    <h5 class="card-title">Soil Moisture</h5>
+                    <p class="sensor-value primary-soil-moisture">
+                        {% if primary_soil_moisture_value is not none %}
+                            {{ "%.1f"|format(primary_soil_moisture_value) }}{{ primary_soil_moisture_unit|default('%') }}
                         {% else %}
-                            --°C
+                            --{{ primary_soil_moisture_unit|default('%') }}
                         {% endif %}
                     </p>
-                    <p class="text-muted small">
-                        Updated: <span class="format-date" data-date="{{ latest_sensor.timestamp if latest_sensor else '' }}">
-                            {{ latest_sensor.timestamp if latest_sensor else 'N/A' }}
-                        </span>
-                    </p>
+                                    {% if latest_sensor and latest_sensor.timestamp %}
+                                    <small class="text-muted format-date" data-date="{{ latest_sensor.timestamp }}">{{ latest_sensor.timestamp }}</small>
+                                    {% endif %}
                 </div>
             </div>
         </div>
         
-        <div class="col-md-3">
+                        <div class="col-lg-3 col-md-6 mb-4">
             <div class="card">
                 <div class="card-body text-center">
-                    <i class="fas fa-cloud-rain fa-3x mb-3 text-info"></i>
+                                    <i class="fas fa-cloud-rain fa-2x mb-2"></i>
                     <h5 class="card-title">Rain Status</h5>
-                    <p class="sensor-value">
+                    <p class="sensor-value rain-status">
                         {% if latest_sensor and latest_sensor.rain is not none %}
-                            <span class="{{ latest_sensor.rain ? 'text-info' : 'text-muted' }}">
-                                {{ latest_sensor.rain ? 'Raining' : 'Not Raining' }}
+                                            <span class="{{ 'text-info' if latest_sensor.rain else 'text-muted' }}">
+                                                {{ 'Raining' if latest_sensor.rain else 'Not Raining' }}
                             </span>
                         {% else %}
                             <span class="text-muted">Unknown</span>
                         {% endif %}
                     </p>
-                    <p class="text-muted small">
-                        Updated: <span class="format-date" data-date="{{ latest_sensor.timestamp if latest_sensor else '' }}">
-                            {{ latest_sensor.timestamp if latest_sensor else 'N/A' }}
-                        </span>
-                    </p>
+                                    {% if latest_sensor and latest_sensor.timestamp %}
+                                    <small class="text-muted format-date" data-date="{{ latest_sensor.timestamp }}">{{ latest_sensor.timestamp }}</small>
+                                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Soil Moisture -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4 class="mb-3">Soil Moisture</h4>
-        </div>
-        
-        <div class="col-12">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Zone Moisture Levels</h5>
+                                    <h5 class="mb-0">Soil Moisture Zones</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row" id="soilMoistureCards">
-                        {% if latest_sensor and latest_sensor.soil_moisture %}
-                            {% set soil_data = latest_sensor.soil_moisture|tojson|fromjson %}
-                            {% for zone_id, value in soil_data.items() %}
-                            <div class="col-md-4 mb-3">
-                                <div class="card">
-                                    <div class="card-body text-center">
-                                        <h6 class="card-title">Zone {{ zone_id }}</h6>
-                                        <div class="progress bg-dark mb-3" style="height: 25px;">
-                                            <div class="progress-bar bg-success" role="progressbar" 
-                                                style="width: {{ value }}%;" 
-                                                aria-valuenow="{{ value }}" aria-valuemin="0" aria-valuemax="100">
-                                                {{ value }}%
-                                            </div>
-                                        </div>
-                                        <p class="small text-muted mb-0">
-                                            {% if value < 30 %}
+                                    <div class="table-responsive">
+                                        <table class="table table-dark table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Zone</th>
+                                                    <th>Moisture Level</th>
+                                                    <th>Status</th>
+                                                    <th>Last Updated</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for zone in soil_moisture %}
+                                                <tr>
+                                                    <td>{{ zone.zone }}</td>
+                                                    <td>{{ zone.value }}%</td>
+                                                    <td>
+                                                        {% if zone.value < 30 %}
                                                 <span class="text-danger">Dry</span>
-                                            {% elif value < 60 %}
+                                                        {% elif zone.value < 60 %}
                                                 <span class="text-warning">Moderate</span>
                                             {% else %}
                                                 <span class="text-success">Wet</span>
                                             {% endif %}
-                                        </p>
+                                                    </td>
+                                                    <td>
+                                                        <span class="format-date" data-date="{{ zone.timestamp }}">{{ zone.timestamp }}</span>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
-                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Light Conditions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-dark table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Light Level</th>
+                                                    <th>Condition</th>
+                                                    <th>Last Updated</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>{{ light_level_value|default('--') }} lux</td>
+                                                    <td>
+                                                        {% if light_level_value is not none %}
+                                                            {% if light_level_value < 1000 %}
+                                                            <span class="text-muted">Low</span>
+                                                            {% elif light_level_value < 10000 %}
+                                                            <span class="text-warning">Moderate</span>
+                                                            {% else %}
+                                                            <span class="text-success">Bright</span>
+                                                            {% endif %}
+                                                        {% else %}
+                                                            <span class="text-muted">Unknown</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if light_level_timestamp %}
+                                                        <span class="format-date" data-date="{{ light_level_timestamp }}">{{ light_level_timestamp }}</span>
                         {% else %}
-                            <div class="col-12">
-                                <div class="alert alert-info">
-                                    No soil moisture data available.
+                                                        --
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                        {% endif %}
+                        </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#updateMoistureModal">
-                        <i class="fas fa-edit me-1"></i>Update Values
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Historical Data Charts -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4 class="mb-3">Historical Data (24 Hours)</h4>
+<!-- History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="historyModalLabel">Sensor History</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 d-flex justify-content-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-sm time-range-btn" data-hours="6">6 Hours</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm time-range-btn" data-hours="12">12 Hours</button>
+                        <button type="button" class="btn btn-outline-light btn-sm time-range-btn active" data-hours="24">24 Hours</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm time-range-btn" data-hours="48">2 Days</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm time-range-btn" data-hours="168">1 Week</button>
+                    </div>
         </div>
         
-        <!-- Temperature Chart -->
+                <div class="row">
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Temperature</h5>
+                                <h6 class="mb-0">Temperature (°C)</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="temperatureChart"></canvas>
-                    </div>
+                                <canvas id="temperatureChart" height="250"></canvas>
                 </div>
             </div>
         </div>
         
-        <!-- Humidity Chart -->
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Humidity</h5>
+                                <h6 class="mb-0">Humidity (%)</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="humidityChart"></canvas>
-                    </div>
+                                <canvas id="humidityChart" height="250"></canvas>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Filter Options -->
-    <div class="row mb-4">
-        <div class="col-12">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Data Filters</h5>
+                                <h6 class="mb-0">Primary Soil Moisture ({{ primary_soil_moisture_unit|default('%') }})</h6>
                 </div>
                 <div class="card-body">
-                    <form id="dataFilterForm" class="row g-3">
-                        <div class="col-md-6">
-                            <label for="timeRangeSelect" class="form-label">Time Range</label>
-                            <select class="form-select" id="timeRangeSelect">
-                                <option value="6">Last 6 Hours</option>
-                                <option value="12">Last 12 Hours</option>
-                                <option value="24" selected>Last 24 Hours</option>
-                                <option value="48">Last 48 Hours</option>
-                                <option value="168">Last Week</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="chartTypeSelect" class="form-label">Chart Type</label>
-                            <select class="form-select" id="chartTypeSelect">
-                                <option value="line" selected>Line Chart</option>
-                                <option value="bar">Bar Chart</option>
-                            </select>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <button type="button" id="applyFilters" class="btn btn-primary">Apply Filters</button>
-                            <button type="button" id="refreshData" class="btn btn-outline-secondary ms-2">
-                                <i class="fas fa-sync-alt me-1"></i>Refresh Data
-                            </button>
-                        </div>
-                    </form>
+                                <canvas id="primarySoilMoistureChart" height="250"></canvas>
                 </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                                <h6 class="mb-0">Rain Events</h6>
+                </div>
+                <div class="card-body">
+                                <canvas id="rainChart" height="250"></canvas>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Update Soil Moisture Modal -->
-<div class="modal fade" id="updateMoistureModal" tabindex="-1" aria-labelledby="updateMoistureModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateMoistureModalLabel">Update Soil Moisture</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Soil Moisture by Zone (%)</h6>
             </div>
-            <div class="modal-body">
-                <form id="moistureForm">
-                    <div class="mb-3">
-                        <label for="zoneSelect" class="form-label">Zone</label>
-                        <select class="form-select" id="zoneSelect">
-                            <option value="1">Zone 1</option>
-                            <option value="2">Zone 2</option>
-                            <option value="3">Zone 3</option>
-                            <option value="4">Zone 4</option>
-                            <option value="5">Zone 5</option>
-                            <option value="6">Zone 6</option>
-                        </select>
+                            <div class="card-body">
+                                <canvas id="soilMoistureChart" height="250"></canvas>
                     </div>
-                    <div class="mb-3">
-                        <label for="moistureValue" class="form-label">Moisture Value (%)</label>
-                        <input type="range" class="form-range" min="0" max="100" value="50" id="moistureValue">
-                        <div class="d-flex justify-content-between">
-                            <span>0% (Dry)</span>
-                            <span id="moistureValueDisplay">50%</span>
-                            <span>100% (Wet)</span>
                         </div>
                     </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="rainStatus">
-                        <label class="form-check-label" for="rainStatus">Rain Detected</label>
                     </div>
-                </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveEnvironment">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -278,245 +329,404 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Chart.js Core -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<!-- Chart.js Date Adapter AFTER Chart.js core -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
 <script>
-    // Chart variables
-    let temperatureChart, humidityChart;
-    
-    // Create the temperature chart
-    function createTemperatureChart(data) {
-        const ctx = document.getElementById('temperatureChart').getContext('2d');
-        
-        // Prepare data
-        const timestamps = data.map(item => new Date(item.timestamp));
-        const temperatures = data.map(item => item.temperature);
-        
-        temperatureChart = new Chart(ctx, {
-            type: document.getElementById('chartTypeSelect').value,
-            data: {
-                labels: timestamps,
-                datasets: [{
-                    label: 'Temperature (°C)',
-                    data: temperatures,
-                    backgroundColor: 'rgba(255, 99, 132, 0.3)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'hour',
-                            displayFormats: {
-                                hour: 'HH:mm'
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Temperature (°C)'
-                        }
-                    }
-                }
-            }
-        });
+    // Chart objects
+    let temperatureChart, humidityChart, primarySoilMoistureChart, rainChart, soilMoistureChart;
+    const chartErrorMsg = "Error: Date adapter for charts not loaded or data issue.";
+    const chartLoadingMsg = "Loading history data...";
+
+    function displayChartMessage(canvasId, message, isError = false) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const container = canvas.closest('.chart-canvas-container'); 
+        if (!container) {
+            console.warn("Chart container not found for", canvasId);
+            canvas.style.display = 'none'; // Hide canvas if no proper container to put message
+            return;
+        }
+        const existingMsgEl = container.querySelector('.chart-message-overlay');
+        if (existingMsgEl) existingMsgEl.remove();
+        const msgEl = document.createElement('div');
+        msgEl.className = 'chart-message-overlay ';
+        msgEl.style.display = 'flex';
+        msgEl.style.justifyContent = 'center';
+        msgEl.style.alignItems = 'center';
+        msgEl.style.height = canvas.height + 'px';
+        msgEl.style.textAlign = 'center';
+        if (isError) {
+            msgEl.classList.add('chart-loading-error'); // Uses existing CSS class
+        } else {
+            msgEl.style.color = '#ccc'; // Default info color
+        }
+        msgEl.textContent = message;
+        canvas.style.display = 'none';
+        container.appendChild(msgEl);
+    }
+
+    function clearChartMessage(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const container = canvas.closest('.chart-canvas-container');
+        if (!container) return;
+        const msgEl = container.querySelector('.chart-message-overlay');
+        if (msgEl) msgEl.remove();
+        canvas.style.display = 'block';
     }
     
-    // Create the humidity chart
-    function createHumidityChart(data) {
-        const ctx = document.getElementById('humidityChart').getContext('2d');
-        
-        // Prepare data
-        const timestamps = data.map(item => new Date(item.timestamp));
-        const humidities = data.map(item => item.humidity);
-        
-        humidityChart = new Chart(ctx, {
-            type: document.getElementById('chartTypeSelect').value,
-            data: {
-                labels: timestamps,
-                datasets: [{
-                    label: 'Humidity (%)',
-                    data: humidities,
-                    backgroundColor: 'rgba(54, 162, 235, 0.3)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'hour',
-                            displayFormats: {
-                                hour: 'HH:mm'
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Humidity (%)'
-                        }
-                    }
-                }
+    // formatDateTime should be available from main.js, if not, define it here.
+    if (typeof formatDateTime !== 'function') {
+        window.formatDateTime = function(dateString) {
+            if (!dateString || dateString.toLowerCase() === 'none' || dateString.toLowerCase() === 'null') return 'N/A';
+            try {
+                return new Date(dateString).toLocaleString();
+            } catch (e) {
+                console.warn("formatDateTime error for:", dateString, e);
+                return dateString; // fallback
             }
-        });
-    }
-    
-    // Load sensor data history
-    function loadSensorHistory() {
-        const hours = document.getElementById('timeRangeSelect').value;
-        
-        fetchData(`sensor-data/history?hours=${hours}`, data => {
-            // Destroy existing charts if they exist
-            if (temperatureChart) temperatureChart.destroy();
-            if (humidityChart) humidityChart.destroy();
-            
-            // Create new charts
-            createTemperatureChart(data);
-            createHumidityChart(data);
-        });
-    }
-    
-    // Update the current sensor data
-    function updateCurrentSensorData() {
-        fetchData('sensor-data', data => {
-            // Update temperature
-            const tempElement = document.querySelector('.sensor-value.temperature');
-            if (tempElement && data.temperature !== null) {
-                tempElement.textContent = data.temperature.toFixed(1) + '°C';
-            }
-            
-            // Update humidity
-            const humElement = document.querySelector('.sensor-value.humidity');
-            if (humElement && data.humidity !== null) {
-                humElement.textContent = data.humidity.toFixed(1) + '%';
-            }
-            
-            // Update heat index
-            const heatElement = document.querySelector('.sensor-value.heat-index');
-            if (heatElement && data.heat_index !== null) {
-                heatElement.textContent = data.heat_index.toFixed(1) + '°C';
-            }
-            
-            // Update soil moisture
-            if (data.soil_moisture) {
-                let cardsHtml = '';
-                for (const [zone_id, value] of Object.entries(data.soil_moisture)) {
-                    const moistureClass = value < 30 ? 'text-danger' : (value < 60 ? 'text-warning' : 'text-success');
-                    const moistureText = value < 30 ? 'Dry' : (value < 60 ? 'Moderate' : 'Wet');
-                    
-                    cardsHtml += `
-                    <div class="col-md-4 mb-3">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h6 class="card-title">Zone ${zone_id}</h6>
-                                <div class="progress bg-dark mb-3" style="height: 25px;">
-                                    <div class="progress-bar bg-success" role="progressbar" 
-                                        style="width: ${value}%;" 
-                                        aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100">
-                                        ${value}%
-                                    </div>
-                                </div>
-                                <p class="small text-muted mb-0">
-                                    <span class="${moistureClass}">${moistureText}</span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    `;
-                }
-                
-                // If there's no soil moisture data
-                if (Object.keys(data.soil_moisture).length === 0) {
-                    cardsHtml = `
-                    <div class="col-12">
-                        <div class="alert alert-info">
-                            No soil moisture data available.
-                        </div>
-                    </div>
-                    `;
-                }
-                
-                document.getElementById('soilMoistureCards').innerHTML = cardsHtml;
-            }
-            
-            // Update timestamps
-            document.querySelectorAll('.format-date').forEach(element => {
-                element.textContent = formatDateTime(data.timestamp);
-            });
-        });
-    }
-    
-    // Save environment data
-    function saveEnvironment() {
-        const zone = parseInt(document.getElementById('zoneSelect').value);
-        const value = parseInt(document.getElementById('moistureValue').value);
-        const rain = document.getElementById('rainStatus').checked;
-        
-        const data = {
-            soil_moisture: {
-                zone: zone,
-                value: value
-            },
-            rain: rain
         };
-        
-        postData('environment', data, response => {
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('updateMoistureModal'));
-            modal.hide();
-            
-            // Update the UI
-            updateCurrentSensorData();
+    }
+
+    // Local fetchData for sensors.html (ensure it's robust)
+    function fetchData(endpoint, callback, errorCallback) {
+        console.log(`[Sensors] fetchData requesting: /api/${endpoint}`);
+        fetch(`/api/${endpoint}`, {
+            headers: { 'X-API-Key': '{{ settings.api_key|default(config.API_KEY) }}' }
+        })
+        .then(response => {
+            console.log(`[Sensors] fetchData status for /api/${endpoint}: ${response.status}`);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error(`[Sensors] fetchData HTTP error for /api/${endpoint}: ${response.status}`, text);
+                    throw new Error(`HTTP error! Status: ${response.status} - ${text || 'Server error'}`);
+                });
+            }
+            return response.json();
+        })
+        .then(apiJson => {
+            console.log(`[Sensors] fetchData response JSON for /api/${endpoint}:`, apiJson);
+            if (apiJson.success) {
+                if (apiJson.timestamps && Array.isArray(apiJson.timestamps)) { 
+                    callback(apiJson);
+                } else { 
+                    callback(apiJson.data);
+                }
+            } else {
+                const errorMsg = apiJson.error || 'Unknown API error from backend';
+                console.error(`[Sensors] fetchData API error in /api/${endpoint}:`, errorMsg);
+                if (errorCallback) errorCallback(new Error(errorMsg));
+                else throw new Error(errorMsg);
+            }
+        })
+        .catch(error => {
+            console.error('[Sensors] fetchData CATCH error for /api/${endpoint}: ', error);
+            if (errorCallback) errorCallback(error);
+            // Do not throw again here if errorCallback is provided and called
         });
+    }
+    
+    function refreshSensorData() {
+        fetchData('sensor-data', 
+            data => {
+                console.log("[Sensors] refreshSensorData received:", data);
+                if (!data) {
+                    console.error("[Sensors] refreshSensorData: No data received from API.");
+                    return;
+                }
+                document.querySelector('.sensor-value.temperature').textContent = data.temperature !== null && data.temperature !== undefined ? data.temperature.toFixed(1) + '°C' : '--°C';
+                document.querySelector('.sensor-value.humidity').textContent = data.humidity !== null && data.humidity !== undefined ? data.humidity.toFixed(1) + '%' : '--%';
+                const psmValueEl = document.querySelector('.sensor-value.primary-soil-moisture');
+                if (psmValueEl) {
+                    if (data.primary_soil_moisture_value !== null && data.primary_soil_moisture_value !== undefined) {
+                        psmValueEl.textContent = data.primary_soil_moisture_value.toFixed(1) + (data.primary_soil_moisture_unit || '%');
+                    } else {
+                        psmValueEl.textContent = '--' + (data.primary_soil_moisture_unit || '%');
+                    }
+                }
+                document.querySelector('.sensor-value.rain-status').innerHTML = data.rain !== null && data.rain !== undefined ? `<span class="${data.rain ? 'text-info' : 'text-secondary'}"><i class="fas ${data.rain ? 'fa-umbrella' : 'fa-ban'} me-1"></i>${data.rain ? 'Raining' : 'Not Raining'}</span>` : '<span class="text-muted">Unknown</span>';
+                
+                document.querySelectorAll('#sensorDashboardCard .format-date').forEach(el => {
+                    if(data.timestamp) {
+                        el.setAttribute('data-date', data.timestamp);
+                        el.textContent = formatDateTime(data.timestamp);
+                    }
+                });
+
+                const soilTableBody = document.getElementById('soilMoistureTableBody');
+                if (soilTableBody) {
+                    soilTableBody.innerHTML = ''; 
+                    if (data.soil_moisture && typeof data.soil_moisture === 'object' && Object.keys(data.soil_moisture).length > 0) {
+                        Object.entries(data.soil_moisture).forEach(([zone_id, zone_data]) => {
+                            if (typeof zone_data !== 'object' || zone_data === null) return;
+                            let statusText, statusClass;
+                            const val = parseInt(zone_data.value);
+                            if (isNaN(val) || zone_data.value === null) { statusText = 'Unknown'; statusClass = 'text-muted'; }
+                            else if (val < 30) { statusText = 'Dry'; statusClass = 'text-danger'; }
+                            else if (val < 60) { statusText = 'Moderate'; statusClass = 'text-warning'; }
+                            else { statusText = 'Wet'; statusClass = 'text-success'; }
+                            const row = soilTableBody.insertRow();
+                            row.insertCell().textContent = zone_id;
+                            row.insertCell().textContent = zone_data.value !== null ? `${zone_data.value}%` : '--';
+                            row.insertCell().innerHTML = `<span class="${statusClass}">${statusText}</span>`;
+                            row.insertCell().textContent = formatDateTime(zone_data.timestamp);
+                        });
+                    } else {
+                        soilTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No soil moisture data.</td></tr>';
+                    }
+                }
+
+                const lightTableBody = document.getElementById('lightLevelTableBody');
+                if (lightTableBody && data.light) { // Changed from data.light_level to data.light based on SensorData model
+                    lightTableBody.innerHTML = ''; 
+                    let conditionText, conditionClass;
+                    const lightVal = parseInt(data.light.value); // Assuming structure {value: X, timestamp: Y}
+                    if (isNaN(lightVal) || data.light.value === null) { conditionText = 'Unknown'; conditionClass = 'text-muted'; }
+                    else if (lightVal < 1000) { conditionText = 'Low'; conditionClass = 'text-muted'; }
+                    else if (lightVal < 10000) { conditionText = 'Moderate'; conditionClass = 'text-warning'; }
+                    else { conditionText = 'Bright'; conditionClass = 'text-success'; }
+                    const row = lightTableBody.insertRow();
+                    row.insertCell().textContent = data.light.value !== null ? `${data.light.value} lux` : '--';
+                    row.insertCell().innerHTML = `<span class="${conditionClass}">${conditionText}</span>`;
+                    row.insertCell().textContent = formatDateTime(data.light.timestamp);
+                } else if (lightTableBody) {
+                    lightTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No light data.</td></tr>';
+                }
+            },
+            error => {
+                console.error("[Sensors] Error during refreshSensorData:", error);
+            }
+        );
+    }
+    
+    function loadSensorHistory(hours = 24) {
+        console.log(`[Sensors] loadSensorHistory called for ${hours} hours.`);
+        const chartIds = ['temperatureChart', 'humidityChart', 'primarySoilMoistureChart', 'rainChart', 'soilMoistureChart'];
+        chartIds.forEach(id => {
+            clearChartMessage(id);
+            displayChartMessage(id, chartLoadingMsg, false);
+        });
+        
+        fetchData(
+            `sensor-data/history?hours=${hours}`,
+            historyData => {
+                console.log("[Sensors] loadSensorHistory received historyData:", historyData);
+                chartIds.forEach(id => clearChartMessage(id));
+
+                if (typeof Chart === 'undefined' || !Chart._adapters || !Chart._adapters._date) {
+                    console.error("[Sensors] Chart.js or date adapter not registered!", Chart ? Chart._adapters : 'Chart undefined');
+                    chartIds.forEach(id => displayChartMessage(id, chartErrorMsg, true));
+                    return;
+                }
+                if (!historyData || !historyData.timestamps || !Array.isArray(historyData.timestamps)) {
+                    console.error("[Sensors] Invalid or missing timestamps in historyData:", historyData);
+                    chartIds.forEach(id => displayChartMessage(id, 'Error: Invalid history data format.', true));
+                    return;
+                }
+                
+                const timeLabels = historyData.timestamps.map(timestamp => new Date(timestamp));
+                createTemperatureChart(timeLabels, historyData.temperature);
+                createHumidityChart(timeLabels, historyData.humidity);
+                createPrimarySoilMoistureChart(timeLabels, historyData.primary_soil_moisture_value, historyData.primary_soil_moisture_unit);
+                createRainChart(timeLabels, historyData.rain);
+                createSoilMoistureChart(timeLabels, historyData.soil_moisture);
+            },
+            error => {
+                console.error("[Sensors] Error callback in loadSensorHistory's fetchData:", error);
+                chartIds.forEach(id => {
+                    clearChartMessage(id);
+                    displayChartMessage(id, 'Failed to load history data. Check console.', true);
+                });
+            }
+        );
+    }
+    
+    function createChart(canvasId, chartHolder, chartType, label, data, colorOptions, yAxisLabel, yMin = null, yMax = null, dataMapFn = null) {
+        if (typeof Chart === 'undefined' || !Chart._adapters || !Chart._adapters._date) {
+            displayChartMessage(canvasId, chartErrorMsg, true); return null;
+        }
+        clearChartMessage(canvasId);
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        if (chartHolder.instance) chartHolder.instance.destroy();
+        const chartData = dataMapFn ? data.map(dataMapFn) : data;
+        if (!labels || !chartData || labels.length === 0 || chartData.length === 0 || labels.length !== chartData.length && chartType !== 'bar') { // Bar chart for rain might have different data length logic
+             console.warn(`[Sensors] Insufficient or mismatched data for chart: ${canvasId}. Labels: ${labels && labels.length}, Data: ${chartData && chartData.length}`);
+             displayChartMessage(canvasId, "No data available for this period or sensor type.", false);
+             return null;
+        }
+        chartHolder.instance = new Chart(ctx, { /* ... Chart config as before ... */
+            type: chartType,
+            data: { labels: labels, datasets: [{ label: label, data: chartData, backgroundColor: colorOptions.bg, borderColor: colorOptions.border, borderWidth: chartType === 'bar' ? 1 : 2, tension: 0.3, pointRadius: 1 }]},
+            options: getChartOptions(yAxisLabel, yMin, yMax)
+        });
+        return chartHolder.instance;
+    }
+
+    const chartHolders = {
+        temperatureChart: { instance: null },
+        humidityChart: { instance: null },
+        primarySoilMoistureChart: { instance: null },
+        rainChart: { instance: null },
+        soilMoistureChart: { instance: null }
+    };
+
+    function createTemperatureChart(labels, data) {
+        chartHolders.temperatureChart.instance = createChart('temperatureChart', chartHolders.temperatureChart, 'line', 'Temperature', data, 
+                                     { bg: 'rgba(255, 99, 132, 0.2)', border: 'rgb(255, 99, 132)' }, '°C', null, null, labels);
+    }
+    function createHumidityChart(labels, data) {
+        chartHolders.humidityChart.instance = createChart('humidityChart', chartHolders.humidityChart, 'line', 'Humidity', data, 
+                                  { bg: 'rgba(54, 162, 235, 0.2)', border: 'rgb(54, 162, 235)' }, '%', 0, 100, labels);
+    }
+    function createPrimarySoilMoistureChart(labels, data, unit = '%') {
+        chartHolders.primarySoilMoistureChart.instance = createChart('primarySoilMoistureChart', chartHolders.primarySoilMoistureChart, 'line', 'Soil Moisture', data, 
+                                   { bg: 'rgba(139, 69, 19, 0.2)', border: 'rgb(139, 69, 19)' }, unit , null, null, labels);
+    }
+    function createRainChart(labels, data) {
+        chartHolders.rainChart.instance = createChart('rainChart', chartHolders.rainChart, 'bar', 'Rain', data, 
+                              { bg: 'rgba(75, 192, 192, 0.5)', border: 'rgb(75, 192, 192)' }, '', 0, 1, labels, val => val ? 1 : 0);
+    }
+
+    function createSoilMoistureChart(labels, soilMoistureData) {
+        if (typeof Chart === 'undefined' || !Chart._adapters || !Chart._adapters._date) {
+            displayChartMessage('soilMoistureChart', chartErrorMsg, true); return;
+        }
+        clearChartMessage('soilMoistureChart');
+        const ctx = document.getElementById('soilMoistureChart').getContext('2d');
+        if (chartHolders.soilMoistureChart.instance) chartHolders.soilMoistureChart.instance.destroy();
+        const datasets = [];
+        const colors = [
+            { bg: 'rgba(75, 192, 192, 0.2)', border: 'rgb(75, 192, 192)' }, { bg: 'rgba(153, 102, 255, 0.2)', border: 'rgb(153, 102, 255)' },
+            { bg: 'rgba(255, 205, 86, 0.2)', border: 'rgb(255, 205, 86)' }, { bg: 'rgba(201, 203, 207, 0.2)', border: 'rgb(201, 203, 207)' },
+            { bg: 'rgba(54, 162, 235, 0.2)', border: 'rgb(54, 162, 235)' },  { bg: 'rgba(255, 99, 132, 0.2)', border: 'rgb(255, 99, 132)' }
+        ];
+        let colorIndex = 0; let hasData = false;
+        for (const zone in soilMoistureData) {
+            if (Object.hasOwnProperty.call(soilMoistureData, zone) && Array.isArray(soilMoistureData[zone])) {
+                if (labels.length === soilMoistureData[zone].length && soilMoistureData[zone].some(d => d !== null)) {
+                    hasData = true;
+                    datasets.push({
+                        label: `Zone ${zone}`, data: soilMoistureData[zone],
+                        backgroundColor: colors[colorIndex % colors.length].bg, borderColor: colors[colorIndex % colors.length].border,
+                        borderWidth: 2, tension: 0.3, pointRadius: 1
+                    });
+                    colorIndex++;
+                }
+            }
+        }
+        if (!hasData || datasets.length === 0) {
+            console.warn("[Sensors] Insufficient data for soil moisture chart.");
+            displayChartMessage("soilMoistureChart", "No soil moisture data available for this period.", false);
+            return;
+        }
+        chartHolders.soilMoistureChart.instance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: datasets }, options: getChartOptions('%', 0, 100) });
+    }
+
+    // getChartOptions, formatAllDates, DOMContentLoaded, refreshSensors (ensure definition)
+    function getChartOptions(unit, min = null, max = null) { /* ... as before ... */ 
+        return {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { color: '#fff', padding: 10, usePointStyle: true, pointStyle: 'circle' } },
+                tooltip: {
+                    mode: 'index', intersect: false, backgroundColor: 'rgba(0,0,0,0.7)',
+                    titleColor: '#fff', bodyColor: '#fff',
+                    titleFont: { size: 14 }, bodyFont: { size: 13 }, padding: 10,
+                    callbacks: { title: (tooltipItems) => new Date(tooltipItems[0].label).toLocaleString() }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { unit: 'hour', displayFormats: { hour: 'HH:mm', day: 'MMM d' }, tooltipFormat: 'MMM d, yyyy HH:mm' },
+                    ticks: { color: '#aaa', maxRotation: 0, autoSkip: true, maxTicksLimit: 15 },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                },
+                y: {
+                    ticks: { color: '#aaa' },
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    title: { display: true, text: unit, color: '#fff', font: { size: 14 } },
+                    min: min, max: max
+                }
+            },
+            animation: { duration: 500, easing: 'easeOutQuart' }, 
+            elements: { line: { borderWidth: 2 }, point: { hoverRadius: 6, hoverBorderWidth: 2 } }
+        };
     }
     
     document.addEventListener('DOMContentLoaded', function() {
-        // Load initial sensor history data
-        loadSensorHistory();
+        // Debug Chart.js adapter registration
+        if (typeof Chart !== 'undefined' && Chart._adapters && Chart._adapters._date) {
+            console.log("[Sensors] DOMContentLoaded: Chart.js date adapter IS registered.", Chart._adapters._date);
+        } else if (typeof Chart !== 'undefined') {
+            console.error("[Sensors] DOMContentLoaded: Chart.js IS LOADED, but date adapter IS NOT registered.", Chart._adapters);
+        } else {
+            console.error("[Sensors] DOMContentLoaded: Chart.js IS NOT LOADED.");
+        }
+
+        refreshSensorData(); // Call refresh first to populate elements
         
-        // Set up auto-refresh for current data
-        setInterval(updateCurrentSensorData, 30000);  // Every 30 seconds
+        // Attempt to call formatAllDates, but check if it exists to prevent errors
+        if (typeof formatAllDates === 'function') {
+            formatAllDates(); 
+        } else {
+            console.warn('[Sensors] formatAllDates function is not defined. Date formatting might be incomplete.');
+            // As a basic fallback for timestamps updated by refreshSensorData if formatAllDates is missing:
+            document.querySelectorAll('.format-date[data-date]').forEach(el => {
+                try {
+                    const dateVal = el.getAttribute('data-date');
+                    if (dateVal && dateVal !== 'None' && dateVal !== 'null') {
+                        el.textContent = new Date(dateVal).toLocaleString();
+                    }
+                } catch (e) { /* ignore */ }
+            });
+        }
+
+        document.getElementById('refreshSensors').addEventListener('click', refreshSensors);
         
-        // Apply filters button
-        document.getElementById('applyFilters').addEventListener('click', function() {
-            loadSensorHistory();
+        document.querySelectorAll('.time-range-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.time-range-btn').forEach(btn => {
+                    btn.classList.remove('active', 'btn-outline-light');
+                    btn.classList.add('btn-outline-secondary');
+                });
+                this.classList.add('active', 'btn-outline-light');
+                this.classList.remove('btn-outline-secondary');
+                loadSensorHistory(parseInt(this.getAttribute('data-hours')));
+            });
         });
         
-        // Refresh data button
-        document.getElementById('refreshData').addEventListener('click', function() {
-            updateCurrentSensorData();
-            loadSensorHistory();
+        const sensorRefreshInterval = (typeof config !== 'undefined' && config.SENSOR_REFRESH_INTERVAL) 
+                                    ? config.SENSOR_REFRESH_INTERVAL * 1000 
+                                    : 60000; // Default to 60s if config not passed
+        setInterval(refreshSensorData, sensorRefreshInterval);
+        
+        const historyModal = document.getElementById('historyModal');
+        historyModal.addEventListener('shown.bs.modal', function() {
+            console.log("[Sensors] History modal shown. Checking adapter and loading history.");
+            if (typeof Chart === 'undefined' || !Chart._adapters || !Chart._adapters._date) {
+                console.error("[Sensors] Modal: Chart.js date adapter NOT registered! Displaying error on charts.");
+                const chartIds = ['temperatureChart', 'humidityChart', 'primarySoilMoistureChart', 'rainChart', 'soilMoistureChart'];
+                chartIds.forEach(id => displayChartMessage(id, chartErrorMsg, true));
+                return; 
+            }
+            const activeBtn = document.querySelector('.time-range-btn.active') || document.querySelector('.time-range-btn[data-hours="24"]');
+            loadSensorHistory(parseInt(activeBtn.getAttribute('data-hours')));
         });
-        
-        // Moisture value slider
-        const moistureSlider = document.getElementById('moistureValue');
-        const moistureDisplay = document.getElementById('moistureValueDisplay');
-        
-        moistureSlider.addEventListener('input', function() {
-            moistureDisplay.textContent = this.value + '%';
-        });
-        
-        // Save environment button
-        document.getElementById('saveEnvironment').addEventListener('click', saveEnvironment);
     });
+    
+    function refreshSensors() { /* ... as before ... */ 
+        const refreshButton = document.getElementById('refreshSensors');
+        refreshButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+        refreshButton.disabled = true;
+        refreshSensorData(); 
+        setTimeout(() => {
+            refreshButton.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
+            refreshButton.disabled = false;
+        }, 1500);
+    }
 </script>
 {% endblock %} 

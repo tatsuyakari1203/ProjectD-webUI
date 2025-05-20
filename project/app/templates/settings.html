@@ -23,11 +23,11 @@
                     <h5 class="mb-0">API Configuration</h5>
                 </div>
                 <div class="card-body">
-                    <form id="apiConfigForm">
+                    <form id="apiConfigForm" action="{{ url_for('main.save_settings') }}" method="POST">
                         <div class="mb-3">
                             <label for="apiKey" class="form-label">API Key</label>
                             <div class="input-group">
-                                <input type="password" class="form-control" id="apiKey" value="8a679613-019f-4b88-9068-da10f09dcdd2" readonly>
+                                <input type="password" class="form-control" id="apiKey" name="apiKey" value="{{ settings.api_key }}" readonly>
                                 <button class="btn btn-outline-secondary" type="button" id="toggleApiKey">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -40,15 +40,15 @@
                         
                         <div class="mb-3">
                             <label for="mqttBroker" class="form-label">MQTT Broker</label>
-                            <input type="text" class="form-control" id="mqttBroker" value="iot.karis.cloud">
+                            <input type="text" class="form-control" id="mqttBroker" name="mqttBroker" value="{{ settings.mqtt_broker }}">
                         </div>
                         
                         <div class="mb-3">
                             <label for="mqttPort" class="form-label">MQTT Port</label>
-                            <input type="number" class="form-control" id="mqttPort" value="1883">
+                            <input type="number" class="form-control" id="mqttPort" name="mqttPort" value="{{ settings.mqtt_port }}">
                         </div>
                         
-                        <button type="button" class="btn btn-primary" id="saveApiConfig">Save Changes</button>
+                        <button type="submit" class="btn btn-primary" id="saveApiConfig">Save Changes</button>
                     </form>
                 </div>
             </div>
@@ -61,47 +61,49 @@
                     <h5 class="mb-0">Notification Settings</h5>
                 </div>
                 <div class="card-body">
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="enableNotifications" checked>
-                        <label class="form-check-label" for="enableNotifications">Enable Notifications</label>
-                    </div>
-                    
-                    <div id="notificationOptions">
-                        <div class="mb-3">
-                            <label class="form-label">Notification Events</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="notifyScheduleStart" checked>
-                                <label class="form-check-label" for="notifyScheduleStart">
-                                    Schedule Start
-                                </label>
+                    <form id="notificationForm" action="{{ url_for('main.save_settings') }}" method="POST">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableNotifications" name="enableNotifications" {% if settings.notifications.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="enableNotifications">Enable Notifications</label>
+                        </div>
+                        
+                        <div id="notificationOptions" {% if not settings.notifications.enabled %}style="display: none;"{% endif %}>
+                            <div class="mb-3">
+                                <label class="form-label">Notification Events</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifyScheduleStart" name="notifyScheduleStart" {% if settings.notifications.events.schedule_start %}checked{% endif %}>
+                                    <label class="form-check-label" for="notifyScheduleStart">
+                                        Schedule Start
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifyScheduleEnd" name="notifyScheduleEnd" {% if settings.notifications.events.schedule_end %}checked{% endif %}>
+                                    <label class="form-check-label" for="notifyScheduleEnd">
+                                        Schedule End
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifyErrors" name="notifyErrors" {% if settings.notifications.events.errors %}checked{% endif %}>
+                                    <label class="form-check-label" for="notifyErrors">
+                                        System Errors
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifySensorAlerts" name="notifySensorAlerts" {% if settings.notifications.events.sensor_alerts %}checked{% endif %}>
+                                    <label class="form-check-label" for="notifySensorAlerts">
+                                        Sensor Alerts
+                                    </label>
+                                </div>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="notifyScheduleEnd" checked>
-                                <label class="form-check-label" for="notifyScheduleEnd">
-                                    Schedule End
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="notifyErrors" checked>
-                                <label class="form-check-label" for="notifyErrors">
-                                    System Errors
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="notifySensorAlerts">
-                                <label class="form-check-label" for="notifySensorAlerts">
-                                    Sensor Alerts
-                                </label>
+                            
+                            <div class="mb-3">
+                                <label for="notificationEmail" class="form-label">Email for Notifications</label>
+                                <input type="email" class="form-control" id="notificationEmail" name="notificationEmail" placeholder="your@email.com" value="{{ settings.notifications.email }}">
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="notificationEmail" class="form-label">Email for Notifications</label>
-                            <input type="email" class="form-control" id="notificationEmail" placeholder="your@email.com">
-                        </div>
-                    </div>
-                    
-                    <button type="button" class="btn btn-primary" id="saveNotificationSettings">Save Settings</button>
+                        <button type="submit" class="btn btn-primary" id="saveNotificationSettings">Save Settings</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -113,36 +115,38 @@
                     <h5 class="mb-0">Data Management</h5>
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label for="dataRetention" class="form-label">Data Retention Period</label>
-                        <select class="form-select" id="dataRetention">
-                            <option value="7">7 days</option>
-                            <option value="14">14 days</option>
-                            <option value="30" selected>30 days</option>
-                            <option value="90">90 days</option>
-                            <option value="180">180 days</option>
-                            <option value="365">1 year</option>
-                        </select>
-                        <small class="text-muted">Sensor data older than this will be automatically deleted.</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="sensorUpdateInterval" class="form-label">Sensor Data Update Interval</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="sensorUpdateInterval" value="5" min="1" max="60">
-                            <span class="input-group-text">seconds</span>
+                    <form id="dataForm" action="{{ url_for('main.save_settings') }}" method="POST">
+                        <div class="mb-3">
+                            <label for="dataRetention" class="form-label">Data Retention Period</label>
+                            <select class="form-select" id="dataRetention" name="dataRetention">
+                                <option value="7" {% if settings.data.retention == 7 %}selected{% endif %}>7 days</option>
+                                <option value="14" {% if settings.data.retention == 14 %}selected{% endif %}>14 days</option>
+                                <option value="30" {% if settings.data.retention == 30 %}selected{% endif %}>30 days</option>
+                                <option value="90" {% if settings.data.retention == 90 %}selected{% endif %}>90 days</option>
+                                <option value="180" {% if settings.data.retention == 180 %}selected{% endif %}>180 days</option>
+                                <option value="365" {% if settings.data.retention == 365 %}selected{% endif %}>1 year</option>
+                            </select>
+                            <small class="text-muted">Sensor data older than this will be automatically deleted.</small>
                         </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="statusUpdateInterval" class="form-label">Status Update Interval</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="statusUpdateInterval" value="10" min="1" max="60">
-                            <span class="input-group-text">seconds</span>
+                        
+                        <div class="mb-3">
+                            <label for="sensorUpdateInterval" class="form-label">Sensor Data Update Interval</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="sensorUpdateInterval" name="sensorUpdateInterval" value="{{ settings.data.sensor_interval }}" min="1" max="60">
+                                <span class="input-group-text">seconds</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <button type="button" class="btn btn-primary" id="saveDataSettings">Save Settings</button>
+                        
+                        <div class="mb-3">
+                            <label for="statusUpdateInterval" class="form-label">Status Update Interval</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="statusUpdateInterval" name="statusUpdateInterval" value="{{ settings.data.status_interval }}" min="1" max="60">
+                                <span class="input-group-text">seconds</span>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" id="saveDataSettings">Save Settings</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -157,9 +161,11 @@
                     <div class="mb-4">
                         <label class="form-label">Database</label>
                         <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-outline-warning" id="pruneDatabase">
-                                <i class="fas fa-broom me-1"></i> Prune Old Data
-                            </button>
+                            <form action="{{ url_for('main.prune_database') }}" method="POST">
+                                <button type="submit" class="btn btn-outline-warning w-100" id="pruneDatabase">
+                                    <i class="fas fa-broom me-1"></i> Prune Old Data
+                                </button>
+                            </form>
                             <button type="button" class="btn btn-outline-danger" id="resetDatabase" data-bs-toggle="modal" data-bs-target="#resetConfirmModal">
                                 <i class="fas fa-trash-alt me-1"></i> Reset Database
                             </button>
@@ -171,15 +177,15 @@
                         <ul class="list-group">
                             <li class="list-group-item d-flex justify-content-between align-items-center bg-dark text-light border-secondary">
                                 Database Size
-                                <span class="badge bg-primary">1.2 MB</span>
+                                <span class="badge bg-primary">{{ "%.2f"|format(db_stats.size) }} MB</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center bg-dark text-light border-secondary">
                                 Sensor Records
-                                <span class="badge bg-primary">2,345</span>
+                                <span class="badge bg-primary">{{ db_stats.sensor_records }}</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center bg-dark text-light border-secondary">
                                 MQTT Status
-                                <span class="badge bg-success">Connected</span>
+                                <span class="badge {% if db_stats.mqtt_status == 'Connected' %}bg-success{% else %}bg-danger{% endif %}">{{ db_stats.mqtt_status }}</span>
                             </li>
                         </ul>
                     </div>
@@ -210,7 +216,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmReset" disabled>Reset Database</button>
+                <form action="{{ url_for('main.reset_database') }}" method="POST">
+                    <button type="submit" class="btn btn-danger" id="confirmReset" disabled>Reset Database</button>
+                </form>
             </div>
         </div>
     </div>
@@ -253,22 +261,6 @@
         document.getElementById('apiKey').value = apiKey;
     }
     
-    // Save API configuration
-    function saveApiConfig() {
-        const apiKey = document.getElementById('apiKey').value;
-        const mqttBroker = document.getElementById('mqttBroker').value;
-        const mqttPort = document.getElementById('mqttPort').value;
-        
-        // Validate inputs
-        if (!apiKey || !mqttBroker || !mqttPort) {
-            alert('Please fill in all required fields');
-            return;
-        }
-        
-        // Show success message
-        alert('API configuration saved successfully');
-    }
-    
     // Toggle notification options
     function toggleNotificationOptions() {
         const enableNotifications = document.getElementById('enableNotifications');
@@ -281,36 +273,52 @@
         }
     }
     
-    // Save notification settings
-    function saveNotificationSettings() {
-        const enableNotifications = document.getElementById('enableNotifications').checked;
-        const email = document.getElementById('notificationEmail').value;
+    // Check system status
+    function checkSystemStatus() {
+        // Get current status elements
+        const dbSizeEl = document.querySelector('.list-group-item:nth-child(1) .badge');
+        const recordsEl = document.querySelector('.list-group-item:nth-child(2) .badge');
+        const mqttStatusEl = document.querySelector('.list-group-item:nth-child(3) .badge');
         
-        if (enableNotifications && !email) {
-            alert('Please enter an email address for notifications');
-            return;
-        }
+        // Show loading state
+        dbSizeEl.textContent = 'Checking...';
+        recordsEl.textContent = 'Checking...';
+        mqttStatusEl.textContent = 'Checking...';
         
-        // Show success message
-        alert('Notification settings saved successfully');
-    }
-    
-    // Save data settings
-    function saveDataSettings() {
-        const dataRetention = document.getElementById('dataRetention').value;
-        const sensorInterval = document.getElementById('sensorUpdateInterval').value;
-        const statusInterval = document.getElementById('statusUpdateInterval').value;
+        // Remove color classes
+        dbSizeEl.className = 'badge bg-secondary';
+        recordsEl.className = 'badge bg-secondary';
+        mqttStatusEl.className = 'badge bg-secondary';
         
-        // Show success message
-        alert('Data settings saved successfully');
-    }
-    
-    // Prune database
-    function pruneDatabase() {
-        if (confirm('Are you sure you want to remove old data according to the retention period?')) {
-            // Show success message
-            alert('Database pruned successfully');
-        }
+        // Fetch updated status
+        fetch('/api/settings/system-status', {
+            headers: {
+                'X-API-Key': '{{ settings.api_key }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI with new values
+                dbSizeEl.textContent = data.db_size.toFixed(2) + ' MB';
+                dbSizeEl.className = 'badge bg-primary';
+                
+                recordsEl.textContent = data.sensor_records;
+                recordsEl.className = 'badge bg-primary';
+                
+                mqttStatusEl.textContent = data.mqtt_status;
+                mqttStatusEl.className = 'badge ' + (data.mqtt_status === 'Connected' ? 'bg-success' : 'bg-danger');
+            } else {
+                throw new Error(data.error || 'Failed to fetch system status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to check system status: ' + error.message);
+            
+            // Restore original values if error
+            window.location.reload();
+        });
     }
     
     // Reset database confirmation
@@ -321,41 +329,6 @@
         resetInput.addEventListener('input', function() {
             resetButton.disabled = this.value !== 'RESET';
         });
-        
-        resetButton.addEventListener('click', function() {
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('resetConfirmModal'));
-            modal.hide();
-            
-            // Show success message
-            alert('Database has been reset successfully');
-        });
-    }
-    
-    // Check system status
-    function checkSystemStatus() {
-        // Simulate checking system status
-        const statusItems = document.querySelectorAll('.list-group-item .badge');
-        
-        // Show loading state
-        statusItems.forEach(item => {
-            item.textContent = 'Checking...';
-            item.classList.remove('bg-success', 'bg-danger', 'bg-primary');
-            item.classList.add('bg-secondary');
-        });
-        
-        // Simulate API call delay
-        setTimeout(() => {
-            // Update with new values
-            statusItems[0].textContent = '1.2 MB';
-            statusItems[0].classList.add('bg-primary');
-            
-            statusItems[1].textContent = '2,345';
-            statusItems[1].classList.add('bg-primary');
-            
-            statusItems[2].textContent = 'Connected';
-            statusItems[2].classList.add('bg-success');
-        }, 1000);
     }
     
     document.addEventListener('DOMContentLoaded', function() {
@@ -365,20 +338,8 @@
         // Set up generate API key
         document.getElementById('generateApiKey').addEventListener('click', generateApiKey);
         
-        // Set up save API config
-        document.getElementById('saveApiConfig').addEventListener('click', saveApiConfig);
-        
         // Set up toggle notification options
         document.getElementById('enableNotifications').addEventListener('change', toggleNotificationOptions);
-        
-        // Set up save notification settings
-        document.getElementById('saveNotificationSettings').addEventListener('click', saveNotificationSettings);
-        
-        // Set up save data settings
-        document.getElementById('saveDataSettings').addEventListener('click', saveDataSettings);
-        
-        // Set up prune database
-        document.getElementById('pruneDatabase').addEventListener('click', pruneDatabase);
         
         // Set up reset confirmation
         setupResetConfirmation();

@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<style>
+    .log-table-container {
+        max-height: 600px; /* Adjust as needed */
+        overflow-y: auto;
+    }
+    .log-message {
+        white-space: pre-wrap; /* Allow line breaks within messages */
+        word-break: break-all; /* Break long words if necessary */
+    }
+    .log-level-DEBUG { color: #90caf9; } /* Light Blue */
+    .log-level-INFO { color: #a5d6a7; } /* Light Green */
+    .log-level-WARNING { color: #ffe082; } /* Amber */
+    .log-level-ERROR { color: #ef9a9a; } /* Light Red */
+    .log-level-CRITICAL { color: #f48fb1; font-weight: bold; } /* Pink */
+
+    #logFilterForm .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+    #logFilterForm .form-control-sm, #logFilterForm .form-select-sm {
+        font-size: 0.85rem;
+    }
+    .log-row-performance td {
+        /* background-color: rgba(72, 187, 120, 0.1); /* Subtle highlight for performance logs */
+        font-style: italic;
+    }
+    #logChartContainer {
+        min-height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Title -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Device Logs</h5>
+                </div>
+                <div class="card-body">
+                    <p>View real-time logs from the ESP32 device. API Key for MQTT messages is required for logs to be processed.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Configuration & Filters -->
+    <div class="row mb-4">
+        <div class="col-lg-4 mb-3 mb-lg-0">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Log Configuration</h6>
+                </div>
+                <div class="card-body">
+                    <form id="logConfigForm" class="row g-2 align-items-end">
+                        <div class="col-sm-5">
+                            <label for="logTarget" class="form-label">Target</label>
+                            <select id="logTarget" class="form-select form-select-sm">
+                                <option value="mqtt" selected>MQTT</option>
+                                <option value="serial">Serial</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4">
+                            <label for="logLevelConfig" class="form-label">Level</label>
+                            <select id="logLevelConfig" class="form-select form-select-sm">
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO" selected>INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                                <option value="CRITICAL">CRITICAL</option>
+                                <option value="NONE">NONE</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-3">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Set</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters & Sorting</h6>
+                </div>
+                <div class="card-body">
+                    <form id="logFilterForm" class="row g-2 align-items-end">
+                        <div class="col-md-3 col-sm-6">
+                            <label for="filterLogLevel" class="form-label">Min. Level</label>
+                            <select id="filterLogLevel" class="form-select form-select-sm">
+                                <option value="ALL" selected>ALL</option>
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                                <option value="CRITICAL">CRITICAL</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label for="filterTag" class="form-label">Tag Contains</label>
+                            <input type="text" id="filterTag" class="form-control form-control-sm" placeholder="e.g., Setup, Core0">
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label for="filterMessage" class="form-label">Message Contains</label>
+                            <input type="text" id="filterMessage" class="form-control form-control-sm" placeholder="e.g., Error, SensorRead">
+                        </div>
+                         <div class="col-md-3 col-sm-6">
+                            <label for="filterEventName" class="form-label">Perf. Event Name</label>
+                            <input type="text" id="filterEventName" class="form-control form-control-sm" placeholder="e.g., SensorReadOperation">
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label for="filterCoreId" class="form-label">Core ID</label>
+                            <select id="filterCoreId" class="form-select form-select-sm">
+                                <option value="ALL" selected>ALL</option>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label for="sortByField" class="form-label">Sort By</label>
+                            <select id="sortByField" class="form-select form-select-sm">
+                                <option value="server_timestamp" selected>Server Time</option>
+                                <option value="level_num">Level</option>
+                                <option value="tag">Tag</option>
+                                <option value="duration_ms">Perf. Duration</option>
+                                <option value="free_heap">Free Heap</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label for="sortOrder" class="form-label">Sort Order</label>
+                            <select id="sortOrder" class="form-select form-select-sm">
+                                <option value="desc" selected>Descending</option>
+                                <option value="asc">Ascending</option>
+                            </select>
+                        </div>                       
+                        <div class="col-md-3 col-sm-12 d-flex align-items-end">
+                             <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" role="switch" id="filterPerformanceOnly">
+                                <label class="form-check-label" for="filterPerformanceOnly">Perf. Logs Only</label>
+                            </div>
+                        </div>
+                         <div class="col-12 mt-2 text-end">
+                            <button type="button" id="applyLogFiltersBtn" class="btn btn-info btn-sm">Apply Filters & Sort</button>
+                            <button type="button" id="resetLogFiltersBtn" class="btn btn-outline-warning btn-sm ms-2">Reset Filters</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>Log Data Chart</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-md-4">
+                            <label for="chartMetricSelect" class="form-label form-label-sm">Metric to Plot:</label>
+                            <select id="chartMetricSelect" class="form-select form-select-sm">
+                                <option value="none" selected>None</option>
+                                <option value="free_heap">Free Heap</option>
+                                <option value="duration_ms">Performance Duration (ms)</option>
+                                <!-- Add more metrics if needed -->
+                            </select>
+                        </div>
+                        <div class="col-md-8" id="chartSpecificFilterContainer" style="display: none;">
+                            <label for="chartEventNameFilter" class="form-label form-label-sm">Filter by Event Name (for Perf. Duration):</label>
+                            <input type="text" id="chartEventNameFilter" class="form-control form-control-sm" placeholder="e.g., SensorReadOperation">
+                        </div>
+                    </div>
+                    <div id="logChartContainer" class="mt-3">
+                        <canvas id="logDataChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Display -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-stream me-2"></i>Log Entries</h6>
+                    <span id="totalLogsCount" class="badge bg-secondary">Total: 0</span>
+                </div>
+                <div class="card-body p-0 log-table-container">
+                    <table class="table table-striped table-hover table-dark mb-0 fixed-layout">
+                        <thead class="table-dark" style="position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th scope="col" style="width: 170px;">Server Time</th>
+                                <th scope="col" style="width: 70px;">Level</th>
+                                <th scope="col" style="width: 110px;">Tag</th>
+                                <th scope="col">Message</th>
+                                <th scope="col" style="width: 50px;">Core</th>
+                                <th scope="col" style="width: 80px;">Heap</th>
+                                <th scope="col" style="width: 140px;">Perf Event</th>
+                                <th scope="col" style="width: 70px;">Perf ms</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody">
+                            <tr><td colspan="8" class="text-center p-3">Loading logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <small id="logPaginationInfo">Page 1 of 1</small>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="prevLogPage" disabled><i class="fas fa-chevron-left"></i> Prev</button>
+                        <button class="btn btn-sm btn-outline-secondary ms-1" id="nextLogPage" disabled>Next <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPage = 1;
+    const logsPerPage = 50;
+    let logDataChartInstance = null;
+    let currentLogDataForChart = []; // Store the fetched logs for charting
+
+    function renderLogChart() {
+        const selectedMetric = document.getElementById('chartMetricSelect').value;
+        const chartEventNameFilter = document.getElementById('chartEventNameFilter').value.trim();
+        const ctx = document.getElementById('logDataChart').getContext('2d');
+
+        if (logDataChartInstance) {
+            logDataChartInstance.destroy();
+        }
+
+        if (selectedMetric === 'none' || currentLogDataForChart.length === 0) {
+            document.getElementById('logChartContainer').style.display = 'none';
+            return;
+        }
+        document.getElementById('logChartContainer').style.display = 'block';
+
+        let chartData = [];
+        let chartLabels = [];
+        let yAxisLabel = selectedMetric;
+
+        // Filter data for chart based on metric and potentially event name
+        let dataToChart = currentLogDataForChart;
+        if (selectedMetric === 'duration_ms') {
+            yAxisLabel = 'Performance Duration (ms)';
+            dataToChart = currentLogDataForChart.filter(log => log.log_type === 'performance' && log.duration_ms !== null);
+            if (chartEventNameFilter) {
+                dataToChart = dataToChart.filter(log => log.event_name && log.event_name.toLowerCase().includes(chartEventNameFilter.toLowerCase()));
+            }
+        } else if (selectedMetric === 'free_heap') {
+            yAxisLabel = 'Free Heap (Bytes)';
+            dataToChart = currentLogDataForChart.filter(log => log.free_heap !== null);
+        }
+        
+        // Prepare data for chart (use server_timestamp for x-axis)
+        // Data is typically sorted descending by server_timestamp, so reverse for chart if needed
+        const sortedDataForChart = [...dataToChart].sort((a,b) => new Date(a.server_timestamp) - new Date(b.server_timestamp));
+
+        sortedDataForChart.forEach(log => {
+            chartLabels.push(new Date(log.server_timestamp).toLocaleTimeString()); // Or full timestamp
+            chartData.push(log[selectedMetric]);
+        });
+
+        if (chartData.length === 0) {
+            // Display a message if no data for the selected metric/filter
+             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+             ctx.font = "16px Arial";
+             ctx.textAlign = "center";
+             ctx.fillText("No data to display for selected chart metric/filter.", ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+        }
+
+        logDataChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: yAxisLabel,
+                    data: chartData,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1,
+                    pointRadius: 2,
+                    borderWidth: 1.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                 scales: {
+                    x: {
+                        ticks: { autoSkip: true, maxTicksLimit: 15, color: '#ccc' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        beginAtZero: selectedMetric !== 'free_heap', // Don't begin at zero for heap unless it makes sense
+                        title: { display: true, text: yAxisLabel, color: '#ccc' },
+                        ticks: { color: '#ccc' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: true, labels: { color: '#ccc'} }
+                }
+            }
+        });
+    }
+
+    function fetchLogs(page = 1) {
+        const logTableBody = document.getElementById('logTableBody');
+        const logPaginationInfo = document.getElementById('logPaginationInfo');
+        const prevLogPageBtn = document.getElementById('prevLogPage');
+        const nextLogPageBtn = document.getElementById('nextLogPage');
+        const totalLogsCountEl = document.getElementById('totalLogsCount');
+
+        const filterLevel = document.getElementById('filterLogLevel').value;
+        const filterPerfOnly = document.getElementById('filterPerformanceOnly').checked;
+        const filterTagVal = document.getElementById('filterTag').value.trim();
+        const filterMessageVal = document.getElementById('filterMessage').value.trim();
+        const filterEventNameVal = document.getElementById('filterEventName').value.trim();
+        const filterCoreIdVal = document.getElementById('filterCoreId').value;
+        const sortBy = document.getElementById('sortByField').value;
+        const sortOrder = document.getElementById('sortOrder').value;
+
+        let apiUrl = `logs?page=${page}&per_page=${logsPerPage}`;
+        if (filterLevel !== 'ALL') apiUrl += `&level=${encodeURIComponent(filterLevel)}`;
+        if (filterPerfOnly) apiUrl += `&type=performance`;
+        if (filterTagVal) apiUrl += `&tag=${encodeURIComponent(filterTagVal)}`;
+        if (filterMessageVal) apiUrl += `&message_contains=${encodeURIComponent(filterMessageVal)}`;
+        if (filterEventNameVal) apiUrl += `&event_name=${encodeURIComponent(filterEventNameVal)}`;
+        if (filterCoreIdVal !== 'ALL') apiUrl += `&core_id=${encodeURIComponent(filterCoreIdVal)}`;
+        if (sortBy) apiUrl += `&sort_by=${encodeURIComponent(sortBy)}`;
+        if (sortOrder) apiUrl += `&sort_order=${encodeURIComponent(sortOrder)}`;
+        
+        console.log(`[Logs] Fetching logs with API URL: ${apiUrl}`);
+        
+        logTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading logs...</td></tr>`;
+
+        fetchData(apiUrl, response => {
+            console.log("[Logs] fetchLogs - success. Response:", response);
+            currentLogDataForChart = []; 
+            if (response && response.success && response.logs) {
+                logTableBody.innerHTML = ''; 
+                totalLogsCountEl.textContent = `Total: ${response.total || 0}`;
+                currentLogDataForChart = response.logs; // Store for charting
+
+                if (response.logs.length === 0) {
+                    logTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-3">No logs found matching criteria.</td></tr>`;
+                }
+                response.logs.forEach(log => {
+                    const row = logTableBody.insertRow();
+                    if(log.log_type === 'performance') {
+                        row.classList.add('log-row-performance');
+                    }
+                    row.insertCell().textContent = log.server_timestamp ? new Date(log.server_timestamp).toLocaleString() : 'N/A';
+                    
+                    const levelCell = row.insertCell();
+                    levelCell.textContent = log.level_str || 'N/A';
+                    if (log.level_str) {
+                        levelCell.classList.add(`log-level-${log.level_str.toUpperCase()}`);
+                    }
+
+                    row.insertCell().textContent = log.tag || 'N/A';
+                    
+                    const messageCell = row.insertCell();
+                    messageCell.textContent = log.message;
+                    messageCell.classList.add('log-message');
+
+                    row.insertCell().textContent = log.core_id !== null ? log.core_id : 'N/A';
+                    row.insertCell().textContent = log.free_heap !== null ? log.free_heap : 'N/A';
+                    row.insertCell().textContent = log.event_name || (log.log_type === 'performance' && log.event_name !== null ? log.event_name : '-');
+                    row.insertCell().textContent = log.duration_ms !== null ? log.duration_ms : (log.log_type === 'performance' && log.duration_ms !== null ? log.duration_ms : '-');
+                });
+
+                currentPage = response.current_page;
+                logPaginationInfo.textContent = `Page ${response.current_page} of ${response.pages || 1}`;
+                prevLogPageBtn.disabled = !response.has_prev;
+                nextLogPageBtn.disabled = !response.has_next;
+
+            } else {
+                totalLogsCountEl.textContent = 'Total: 0';
+                logTableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger p-3">Error loading logs. ${response.error || 'Unknown error'}</td></tr>`;
+                console.error("Error fetching logs:", response);
+            }
+            renderLogChart(); // Render/update chart after fetching logs
+        }, error => {
+            currentLogDataForChart = [];
+            totalLogsCountEl.textContent = 'Total: 0';
+            logTableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger p-3">Failed to fetch logs. Check API connection.</td></tr>`;
+            console.error("[Logs] API call failed for logs:", error);
+            renderLogChart(); // Clear chart on error
+        });
+    }
+    
+    function resetFilters() {
+        document.getElementById('filterLogLevel').value = 'ALL';
+        document.getElementById('filterPerformanceOnly').checked = false;
+        document.getElementById('filterTag').value = '';
+        document.getElementById('filterMessage').value = '';
+        document.getElementById('filterEventName').value = '';
+        document.getElementById('filterCoreId').value = 'ALL';
+        document.getElementById('sortByField').value = 'server_timestamp';
+        document.getElementById('sortOrder').value = 'desc';
+        document.getElementById('chartMetricSelect').value = 'none';
+        document.getElementById('chartEventNameFilter').value = '';
+        document.getElementById('chartSpecificFilterContainer').style.display = 'none';
+        fetchLogs(1); // Fetch with reset filters, which will also update/clear the chart
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchLogs(currentPage);
+
+        document.getElementById('applyLogFiltersBtn').addEventListener('click', () => fetchLogs(1));
+        document.getElementById('resetLogFiltersBtn').addEventListener('click', resetFilters);
+
+        document.getElementById('prevLogPage').addEventListener('click', () => {
+            if (currentPage > 1) fetchLogs(currentPage - 1);
+        });
+        document.getElementById('nextLogPage').addEventListener('click', () => fetchLogs(currentPage + 1));
+        
+        const chartMetricSelect = document.getElementById('chartMetricSelect');
+        const chartSpecificFilterContainer = document.getElementById('chartSpecificFilterContainer');
+        const chartEventNameFilterInput = document.getElementById('chartEventNameFilter');
+
+        chartMetricSelect.addEventListener('change', function() {
+            if (this.value === 'duration_ms') {
+                chartSpecificFilterContainer.style.display = 'block';
+            } else {
+                chartSpecificFilterContainer.style.display = 'none';
+            }
+            renderLogChart(); // Re-render chart when metric changes
+        });
+        chartEventNameFilterInput.addEventListener('input', renderLogChart); // Re-render on event name filter change
+
+        const logConfigForm = document.getElementById('logConfigForm');
+        logConfigForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const target = document.getElementById('logTarget').value;
+            const level = document.getElementById('logLevelConfig').value; 
+            console.log(`[Logs] Submitting log config: target=${target}, level=${level}`);
+
+            postData('logconfig', 
+                { target: target, level: level }, 
+                response => {
+                    console.log("[Logs] postData logconfig - success. Response:", response);
+                    if (response.success) {
+                        showToast('Log Config', response.message || 'Log config command sent.', 'success');
+                    } else {
+                        showToast('Log Config Error', response.error || 'Failed to send command.', 'danger');
+                    }
+                },
+                error => {
+                    console.error("[Logs] postData logconfig - error. Detail:", error);
+                    showToast('Log Config API Error', 'Could not reach API to send log config command.', 'danger');
+                }
+            );
+        });
+        renderLogChart(); // Initial attempt to render chart (likely empty)
+    });
+</script>
+{% endblock %} 

@@ -50,43 +50,76 @@ function formatDaysList(days) {
     return days.map(day => daysOfWeek[day]).join(', ');
 }
 
+// API key for authentication
+const API_KEY = "8a679613-019f-4b88-9068-da10f09dcdd2";
+
 // Update data via API fetch
-function fetchData(endpoint, callback) {
-    fetch(`/api/${endpoint}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            callback(data);
-        })
-        .catch(error => {
-            console.error(`Error fetching ${endpoint}:`, error);
-        });
+function fetchData(endpoint, successCallback, errorCallback) {
+    console.log(`[fetchData] Requesting: /api/${endpoint}`);
+    fetch(`/api/${endpoint}`, {
+        headers: {
+            'X-API-Key': API_KEY
+        }
+    })
+    .then(response => {
+        console.log(`[fetchData] Response status for /api/${endpoint}: ${response.status}`);
+        if (!response.ok) {
+            // Try to get text for more detailed error, then throw
+            return response.text().then(text => {
+                console.error(`[fetchData] HTTP error for /api/${endpoint}: ${response.status}`, text);
+                throw new Error(`HTTP error! Status: ${response.status} - ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log(`[fetchData] Response data for /api/${endpoint}:`, data);
+        if (data.success) {
+            successCallback(data.data || data); 
+        } else {
+            console.error(`[fetchData] API error in /api/${endpoint}:`, data.error || 'Unknown API error');
+            if (errorCallback) errorCallback(data.error || 'Unknown API error');
+        }
+    })
+    .catch(error => {
+        console.error(`[fetchData] Catch_Error fetching /api/${endpoint}:`, error);
+        if (errorCallback) errorCallback(error);
+    });
 }
 
 // Post data to API endpoint
-function postData(endpoint, data, callback) {
+function postData(endpoint, body, successCallback, errorCallback) {
+    console.log(`[postData] Posting to: /api/${endpoint}`, body);
     fetch(`/api/${endpoint}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-API-Key': API_KEY
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(body),
     })
     .then(response => {
+        console.log(`[postData] Response status for /api/${endpoint}: ${response.status}`);
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.text().then(text => {
+                console.error(`[postData] HTTP error for /api/${endpoint}: ${response.status}`, text);
+                throw new Error(`HTTP error! Status: ${response.status} - ${text}`);
+            });
         }
         return response.json();
     })
     .then(responseData => {
-        if (callback) callback(responseData);
+        console.log(`[postData] Response data for /api/${endpoint}:`, responseData);
+        if (responseData.success) {
+            if (successCallback) successCallback(responseData);
+        } else {
+            console.error(`[postData] API error in /api/${endpoint}:`, responseData.error || 'Unknown API error');
+            if (errorCallback) errorCallback(responseData.error || 'Unknown API error');
+        }
     })
     .catch(error => {
-        console.error(`Error posting to ${endpoint}:`, error);
+        console.error(`[postData] Catch_Error posting to /api/${endpoint}:`, error);
+        if (errorCallback) errorCallback(error);
     });
 }
 

@@ -87,6 +87,25 @@ class IrrigationSchedule(db.Model):
             'sensor_condition': self.sensor_condition_dict
         }
     
+    def to_command_dict(self):
+        """
+        Convert schedule object to dictionary for command payload (to ESP32).
+        Excludes 'state' and 'next_run'.
+        """
+        return {
+            'id': self.id,
+            'active': self.active,
+            'days': self.days_list,  # Should be an array, e.g., [] or [1,2,3]
+            'time': self.time,
+            'duration': self.duration,
+            'zones': self.zones_list, # Should be an array
+            'priority': self.priority,
+            'sensor_condition': self.sensor_condition_dict if self.sensor_condition_dict else {} 
+            # Ensure sensor_condition is at least an empty dict if None, 
+            # or handle as per ESP32's expectation for optional field.
+            # jsondocs implies it's optional, so sending {} or omitting if empty is fine.
+        }
+    
     def calculate_next_run(self):
         """
         Calculate the next run time based on the schedule

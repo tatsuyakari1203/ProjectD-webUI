@@ -5,11 +5,14 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Zone Control</h5>
+                    <button type="button" class="btn btn-danger btn-sm" id="turnAllOffBtn">
+                        <i class="fas fa-power-off me-1"></i> Turn All Relays Off
+                    </button>
                 </div>
                 <div class="card-body">
-                    <p>Manage irrigation zones by controlling individual relays. You can turn zones on/off and set durations for automated control.</p>
+                    <p>Manage irrigation zones by controlling individual relays. You can turn zones on/off and set durations (in seconds) for automated control.</p>
                 </div>
             </div>
         </div>
@@ -17,84 +20,87 @@
 
     <div class="row">
         {% for relay in relays %}
-        <div class="col-lg-6 mb-4">
-            <div class="card" data-relay-id="{{ relay.id }}">
+        <div class="col-lg-6 col-md-12 mb-4">
+            <div class="card h-100" data-relay-id="{{ relay.id }}">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Zone {{ relay.id }}: {{ relay.name }}</h5>
-                    <span class="badge {{ relay.state ? 'bg-success' : 'bg-secondary' }}">
-                        {{ relay.state ? 'ON' : 'OFF' }}
+                    <h5 class="mb-0"><i class="fas fa-faucet me-2"></i>Zone {{ relay.id }}: <span class="relay-name-display">{{ relay.name }}</span></h5>
+                    <span class="badge fs-6 {{ 'bg-success' if relay.state else 'bg-secondary' }} relay-status-badge">
+                        {{ 'ON' if relay.state else 'OFF' }}
                     </span>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-sm-6 border-end pb-3 pb-sm-0 relay-status-column">
+                            <h6 class="text-muted mb-2"><i class="fas fa-info-circle me-2"></i>Status</h6>
                             {% if relay.state and relay.remaining_time > 0 %}
-                            <div class="mb-3">
-                                <h6><i class="fas fa-stopwatch me-2"></i>Remaining Time</h6>
-                                <p class="remaining-time fs-4" data-seconds="{{ relay.remaining_time }}">
+                            <div class="mb-2 relay-remaining-time-container">
+                                <strong><i class="fas fa-stopwatch me-2"></i>Remaining:</strong>
+                                <span class="remaining-time fs-5" data-seconds="{{ relay.remaining_time }}">
                                     {{ relay.remaining_time // 60 }}:{{ (relay.remaining_time % 60)|string|zfill(2) }}
-                                </p>
+                                </span>
                             </div>
                             {% endif %}
-                            
-                            <div class="mb-3">
-                                <h6><i class="fas fa-calendar-alt me-2"></i>Last Updated</h6>
-                                <p class="format-date" data-date="{{ relay.last_updated }}">{{ relay.last_updated }}</p>
+                            <div class="mb-0">
+                                <strong><i class="fas fa-calendar-alt me-2"></i>Last Update:</strong>
+                                <span class="format-date relay-last-updated" data-date="{{ relay.last_updated }}">{{ relay.last_updated }}</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <h6><i class="fas fa-cog me-2"></i>Controls</h6>
-                            <form action="{{ url_for('main.relay_control') }}" method="POST" class="mt-3">
+                        <div class="col-sm-6 pt-3 pt-sm-0 relay-controls-column">
+                            <h6 class="text-muted mb-2"><i class="fas fa-sliders-h me-2"></i>Controls</h6>
+                            <form action="{{ url_for('main.relay_control') }}" method="POST" class="relay-control-form">
                                 <input type="hidden" name="relay_id" value="{{ relay.id }}">
                                 
-                                <div class="input-group mb-3">
-                                    <span class="input-group-text">Duration</span>
-                                    <input type="number" class="form-control" name="duration" min="1" max="180" value="15" {{ relay.state ? 'disabled' : '' }}>
-                                    <span class="input-group-text">minutes</span>
+                                {% if not relay.state %}
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text" id="duration-label-{{ relay.id }}"><i class="fas fa-clock me-1"></i></span>
+                                    <input type="number" class="form-control" name="duration" min="1" max="7200" value="60" placeholder="Seconds" aria-label="Duration in seconds" aria-describedby="duration-label-{{ relay.id }}">
+                                    <button class="btn btn-primary" type="submit" name="action" value="on">Turn On</button>
                                 </div>
+                                <div class="form-text mb-2 ms-1">Set duration in seconds to turn on.</div>
                                 
-                                <div class="d-grid gap-2">
-                                    {% if not relay.state %}
-                                    <button type="submit" name="action" value="on" class="btn btn-success">
-                                        <i class="fas fa-power-off me-1"></i>Turn On
+                                <div class="d-grid">
+                                     <button type="submit" name="action" value="on_no_duration" class="btn btn-success">
+                                        <i class="fas fa-toggle-on me-1"></i>Turn On (No Duration)
                                     </button>
-                                    {% else %}
-                                    <button type="submit" name="action" value="off" class="btn btn-danger">
-                                        <i class="fas fa-power-off me-1"></i>Turn Off
-                                    </button>
-                                    {% endif %}
                                 </div>
+                                {% else %}
+                                <div class="d-grid">
+                                    <button type="submit" name="action" value="off" class="btn btn-danger">
+                                        <i class="fas fa-toggle-off me-1"></i>Turn Off
+                                    </button>
+                                </div>
+                                {% endif %}
                             </form>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#editRelay{{ relay.id }}">
-                        <i class="fas fa-edit me-1"></i>Edit Zone Name
+                <div class="card-footer text-end">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editRelayModal{{ relay.id }}">
+                        <i class="fas fa-edit me-1"></i>Edit Name
                     </button>
                 </div>
             </div>
         </div>
         
         <!-- Edit Relay Name Modal -->
-        <div class="modal fade" id="editRelay{{ relay.id }}" tabindex="-1" aria-labelledby="editRelayLabel{{ relay.id }}" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content bg-dark">
+        <div class="modal fade" id="editRelayModal{{ relay.id }}" tabindex="-1" aria-labelledby="editRelayLabel{{ relay.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="editRelayLabel{{ relay.id }}">Edit Zone {{ relay.id }} Name</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form id="editRelayForm{{ relay.id }}">
+                        <form id="editRelayForm{{ relay.id }}" onsubmit="return false;">
                             <div class="mb-3">
-                                <label for="relayName{{ relay.id }}" class="form-label">Zone Name</label>
-                                <input type="text" class="form-control" id="relayName{{ relay.id }}" value="{{ relay.name }}">
+                                <label for="relayNameInput{{ relay.id }}" class="form-label">New Zone Name</label>
+                                <input type="text" class="form-control" id="relayNameInput{{ relay.id }}" value="{{ relay.name }}" required>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary save-relay-name" data-relay-id="{{ relay.id }}">Save</button>
+                        <button type="button" class="btn btn-primary save-relay-name-btn" data-relay-id="{{ relay.id }}">Save Name</button>
                     </div>
                 </div>
             </div>
@@ -106,7 +112,12 @@
 
 {% block scripts %}
 <script>
-    // Update remaining time counters
+    function formatRemainingTime(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    }
+
     function updateRemainingTimes() {
         document.querySelectorAll('.remaining-time').forEach(element => {
             let seconds = parseInt(element.dataset.seconds || 0);
@@ -116,119 +127,258 @@
                 element.textContent = formatRemainingTime(seconds);
             } else {
                 element.textContent = '0:00';
+                // If timer ends, the main updateRelayStatus will refresh the UI.
             }
         });
     }
 
-    // Auto-refresh for relay status
+    function createRelayControlFormContent(relay) {
+        let formContent = `<input type="hidden" name="relay_id" value="${relay.id}">`;
+        if (!relay.state) {
+            formContent += `
+                <div class="input-group mb-2">
+                    <span class="input-group-text" id="duration-label-${relay.id}"><i class="fas fa-clock me-1"></i></span>
+                    <input type="number" class="form-control" name="duration" min="1" max="7200" value="60" placeholder="Seconds" aria-label="Duration in seconds" aria-describedby="duration-label-${relay.id}">
+                    <button class="btn btn-primary" type="submit" name="action" value="on">Turn On</button>
+                </div>
+                <div class="form-text mb-2 ms-1">Set duration in seconds to turn on.</div>
+                <div class="d-grid">
+                     <button type="submit" name="action" value="on_no_duration" class="btn btn-success">
+                        <i class="fas fa-toggle-on me-1"></i>Turn On (No Duration)
+                    </button>
+                </div>
+            `;
+        } else {
+            formContent += `
+                <div class="d-grid">
+                    <button type="submit" name="action" value="off" class="btn btn-danger">
+                        <i class="fas fa-toggle-off me-1"></i>Turn Off
+                    </button>
+                </div>
+            `;
+        }
+        return formContent;
+    }
+    
+    function createRelayStatusContent(relay, statusCol) {
+        // Clear previous remaining time if any
+        const existingRemainingTimeDiv = statusCol.querySelector('.relay-remaining-time-container');
+        if (existingRemainingTimeDiv) {
+            existingRemainingTimeDiv.remove();
+        }
+
+        if (relay.state && relay.remaining_time > 0) {
+            const newElDiv = document.createElement('div');
+            newElDiv.className = 'mb-2 relay-remaining-time-container';
+            newElDiv.innerHTML = `
+                <strong><i class="fas fa-stopwatch me-2"></i>Remaining:</strong>
+                <span class="remaining-time fs-5" data-seconds="${relay.remaining_time}">
+                    ${formatRemainingTime(relay.remaining_time)}
+                </span>
+            `;
+            // Insert before 'Last Update'
+            const lastUpdateDiv = statusCol.querySelector('.mb-0'); 
+            if(lastUpdateDiv) statusCol.insertBefore(newElDiv, lastUpdateDiv);
+            else statusCol.appendChild(newElDiv); // fallback
+        }
+    }
+
     function updateRelayStatus() {
-        fetchData('relay-status', data => {
-            data.forEach(relay => {
-                const card = document.querySelector(`.card[data-relay-id="${relay.id}"]`);
-                if (card) {
-                    const badge = card.querySelector('.badge');
+        fetchData(
+            'relay-status', 
+            relaysData => { 
+                console.log('[Relays] updateRelayStatus - success callback. Data:', relaysData);
+                if (!Array.isArray(relaysData)) {
+                     console.error('[Relays] Invalid API response for relay-status: Expected an array, got:', relaysData);
+                     return;
+                }
+                relaysData.forEach(relay => {
+                    // console.log('[Relays] Processing relay:', relay); // Optional: very verbose
+                    const relayCardSelector = `.card[data-relay-id="${relay.id}"]`; 
+                    const card = document.querySelector(relayCardSelector);
+                    if (!card) return;
+
+                    const badge = card.querySelector('.relay-status-badge');
                     if (badge) {
-                        badge.className = relay.state ? 'badge bg-success' : 'badge bg-secondary';
+                        badge.className = relay.state ? 'badge fs-6 bg-success relay-status-badge' : 'badge fs-6 bg-secondary relay-status-badge';
                         badge.textContent = relay.state ? 'ON' : 'OFF';
                     }
-                    
-                    // Update form elements based on state
-                    const durationInput = card.querySelector('input[name="duration"]');
-                    if (durationInput) {
-                        durationInput.disabled = relay.state;
+
+                    const controlsForm = card.querySelector('.relay-control-form');
+                    if (controlsForm) {
+                        controlsForm.innerHTML = createRelayControlFormContent(relay);
                     }
-                    
-                    // Update buttons
-                    const form = card.querySelector('form');
-                    if (form) {
-                        const buttonsContainer = form.querySelector('.d-grid');
-                        if (buttonsContainer) {
-                            if (relay.state) {
-                                buttonsContainer.innerHTML = `
-                                    <button type="submit" name="action" value="off" class="btn btn-danger">
-                                        <i class="fas fa-power-off me-1"></i>Turn Off
-                                    </button>
-                                `;
-                            } else {
-                                buttonsContainer.innerHTML = `
-                                    <button type="submit" name="action" value="on" class="btn btn-success">
-                                        <i class="fas fa-power-off me-1"></i>Turn On
-                                    </button>
-                                `;
+
+                    const statusCol = card.querySelector('.relay-status-column');
+                    if (statusCol) {
+                        createRelayStatusContent(relay, statusCol);
+                        const lastUpdatedSpan = statusCol.querySelector('.relay-last-updated');
+                        if (lastUpdatedSpan && relay.last_updated) {
+                            lastUpdatedSpan.dataset.date = relay.last_updated;
+                            try {
+                                lastUpdatedSpan.textContent = new Date(relay.last_updated).toLocaleString(); 
+                            } catch (e) { 
+                                console.warn('Date formatting error:', e); 
+                                lastUpdatedSpan.textContent = 'Invalid Date';
                             }
                         }
                     }
-                    
-                    // Update remaining time
-                    if (relay.state && relay.remaining_time > 0) {
-                        let remainingTimeEl = card.querySelector('.remaining-time');
-                        
-                        if (!remainingTimeEl) {
-                            // Create remaining time element if it doesn't exist
-                            const firstCol = card.querySelector('.col-md-6');
-                            const newEl = document.createElement('div');
-                            newEl.className = 'mb-3';
-                            newEl.innerHTML = `
-                                <h6><i class="fas fa-stopwatch me-2"></i>Remaining Time</h6>
-                                <p class="remaining-time fs-4" data-seconds="${relay.remaining_time}">
-                                    ${formatRemainingTime(relay.remaining_time)}
-                                </p>
-                            `;
-                            firstCol.insertBefore(newEl, firstCol.firstChild);
-                            remainingTimeEl = card.querySelector('.remaining-time');
-                        } else {
-                            remainingTimeEl.dataset.seconds = relay.remaining_time;
-                            remainingTimeEl.textContent = formatRemainingTime(relay.remaining_time);
-                        }
-                    } else {
-                        // Remove remaining time element if relay is off
-                        const remainingTimeContainer = card.querySelector('.remaining-time').closest('.mb-3');
-                        if (remainingTimeContainer) {
-                            remainingTimeContainer.remove();
-                        }
-                    }
-                }
-            });
-        });
+                });
+            },
+            error => { 
+                console.error('[Relays] Failed to fetch relay status in updateRelayStatus:', error);
+                // Optional: Re-enable toast if needed for specific debugging, but was asked to be removed.
+                // if (typeof showToast === 'function') {
+                //     showToast('Error', 'Could not update relay status.', 'danger');
+                // }
+            }
+        );
     }
 
-    // Handle saving relay name
-    function setupRelayNameEdit() {
-        document.querySelectorAll('.save-relay-name').forEach(button => {
+    function setupRelayNameEditing() {
+        document.querySelectorAll('.save-relay-name-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const relayId = this.getAttribute('data-relay-id');
-                const nameInput = document.getElementById(`relayName${relayId}`);
+                const nameInput = document.getElementById(`relayNameInput${relayId}`);
                 const newName = nameInput.value.trim();
+                console.log(`[Relays] Attempting to save name for relay ${relayId}: "${newName}"`);
                 
-                if (newName) {
-                    postData('relay-name', {
-                        relay_id: parseInt(relayId),
-                        name: newName
-                    }, response => {
-                        // Close modal
-                        const modal = bootstrap.Modal.getInstance(document.getElementById(`editRelay${relayId}`));
-                        modal.hide();
-                        
-                        // Update name in the UI
-                        const cardHeader = document.querySelector(`.card[data-relay-id="${relayId}"] .card-header h5`);
-                        if (cardHeader) {
-                            cardHeader.textContent = `Zone ${relayId}: ${newName}`;
+                if (newName && nameInput.checkValidity()) { 
+                    postData('relay-name', 
+                        { relay_id: parseInt(relayId), name: newName }, 
+                        function(response) { 
+                            console.log('[Relays] Successfully saved relay name. Response:', response);
+                            const modalElement = document.getElementById(`editRelayModal${relayId}`);
+                            if (modalElement) {
+                                const modal = bootstrap.Modal.getInstance(modalElement);
+                                if (modal) modal.hide();
+                            }
+                            
+                            const cardHeaderNameSpan = document.querySelector(`.card[data-relay-id="${relayId}"] .relay-name-display`);
+                            if (cardHeaderNameSpan) {
+                                cardHeaderNameSpan.textContent = newName;
+                            }
+                            if (typeof showToast === 'function') showToast('Success', `Zone ${relayId} name updated to ${newName}.`);
+                        },
+                        function(errorResponse) { 
+                            console.error('[Relays] Error saving relay name. Response:', errorResponse);
+                            let errorMessage = 'Failed to update zone name.';
+                            if (errorResponse && errorResponse.error) {
+                                errorMessage += ' ' + errorResponse.error;
+                            }
+                             if (typeof showToast === 'function') showToast('Error', errorMessage, 'danger');
+                             else alert(errorMessage);
                         }
-                    });
+                    );
+                } else if (!newName) {
+                    nameInput.reportValidity(); // Show browser's default validation message for required
+                     if (typeof showToast === 'function') showToast('Validation Error', 'Zone name cannot be empty.', 'warning');
                 }
             });
         });
     }
+    
+    // Ensure showToast is defined (ideally in base.html or a global script)
+    // Basic version for this file if not globally available:
+    if (typeof showToast !== 'function') {
+        window.showToast = function(title, message, type = 'success') {
+            console.log(`[showToast] Title: ${title}, Message: ${message}, Type: ${type}`); // Log toast calls
+            const toastPlacement = document.getElementById('toastPlacement');
+            if (!toastPlacement) {
+                console.warn('Toast container #toastPlacement not found. Using alert as fallback.');
+                alert(`${title}: ${message}`);
+                return;
+            }
+            const toastId = 'toast-' + Date.now();
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <strong>${title}</strong>: ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            toastPlacement.insertAdjacentHTML('beforeend', toastHtml);
+            const toastElement = document.getElementById(toastId);
+            if (toastElement) {
+                const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+                toast.show();
+                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            } else {
+                 console.error('Failed to create toast element', toastId);
+            }
+        }
+    }
+
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Start remaining time countdown
         setInterval(updateRemainingTimes, 1000);
         
-        // Auto-refresh relay status
-        setInterval(updateRelayStatus, 10000);
+        updateRelayStatus(); 
+        // Ensure RELAY_STATUS_REFRESH_INTERVAL is available in the config passed to template
+        // Defaulting to 10 seconds if not set, to prevent errors.
+        const refreshInterval = (typeof config !== 'undefined' && config.RELAY_STATUS_REFRESH_INTERVAL) 
+                                ? config.RELAY_STATUS_REFRESH_INTERVAL * 1000 
+                                : 10000;
+        setInterval(updateRelayStatus, refreshInterval);
         
-        // Setup relay name editing
-        setupRelayNameEdit();
+        setupRelayNameEditing();
+
+        document.querySelectorAll('.format-date').forEach(el => {
+            try {
+                const dateValue = el.dataset.date;
+                if (dateValue && dateValue.toLowerCase() !== 'none' && dateValue.toLowerCase() !== 'null') {
+                    const date = new Date(dateValue);
+                    // Check if date is valid after parsing
+                    if (!isNaN(date.getTime())) {
+                        el.textContent = date.toLocaleString(); 
+                    } else {
+                        el.textContent = 'Invalid Date';
+                        console.warn('Could not parse date (invalid date object):', dateValue);
+                    }
+                } else {
+                    el.textContent = 'N/A'; 
+                }
+            } catch (e) {
+                el.textContent = 'Date Error';
+                console.warn('Could not parse date (exception):', el.dataset.date, e);
+            }
+        });
+
+        const turnAllOffButton = document.getElementById('turnAllOffBtn');
+        if (turnAllOffButton) {
+            turnAllOffButton.addEventListener('click', function() {
+                if (confirm('Are you sure you want to turn ALL relays off?')) {
+                    // Disable button to prevent multiple clicks
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Turning Off...';
+                    
+                    postData('relays/all-off', {}, 
+                        response => { // Success callback for postData
+                            showToast('Command Sent', response.message || 'All relays commanded off.', 'success');
+                            // Re-enable button
+                            this.disabled = false;
+                            this.innerHTML = '<i class="fas fa-power-off me-1"></i> Turn All Relays Off';
+                            // Optionally, trigger an immediate refresh of relay statuses
+                            updateRelayStatus(); 
+                        },
+                        errorResponse => { // Error callback for postData
+                            let errorMsg = 'Failed to turn all relays off.';
+                            if (typeof errorResponse === 'string') errorMsg = errorResponse;
+                            else if (errorResponse && errorResponse.error) errorMsg = errorResponse.error;
+                            else if (errorResponse && errorResponse.message) errorMsg = errorResponse.message;
+                            
+                            showToast('Error', errorMsg, 'danger');
+                            // Re-enable button
+                            this.disabled = false;
+                            this.innerHTML = '<i class="fas fa-power-off me-1"></i> Turn All Relays Off';
+                        }
+                    );
+                }
+            });
+        }
     });
 </script>
 {% endblock %} 
